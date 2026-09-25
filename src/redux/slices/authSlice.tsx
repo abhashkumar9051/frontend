@@ -1,13 +1,38 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
+// export interface User {
+//   id: string;
+//   mobileNumber: string;
+//   name: string;
+//   role: "student" | "admin";
+//   isActive: boolean;
+//   lastLoginAt?: string | null;
+//   createdAt?: string;
+//   updatedAt?: string;
+// }
 export interface User {
   id: string;
-  mobileNumber: string;
+
+  mobileNumber?: string | null;
+
+  googleId?: string;
+
+  email?: string;
+
   name: string;
-  role: "student" | "admin";
+
+  profileImage?: string;
+
+  role:
+    | "student"
+    | "admin";
+
   isActive: boolean;
+
   lastLoginAt?: string | null;
+
   createdAt?: string;
+
   updatedAt?: string;
 }
 
@@ -56,19 +81,32 @@ const authSlice = createSlice({
       state.initialRoute = "Home";
     },
 
+    // restoreSession: (
+    //   state,
+    //   action: PayloadAction<{
+    //     token: string;
+    //     user: User | null;
+    //   }>
+    // ) => {
+    //   state.token = action.payload.token;
+    //   state.user = action.payload.user;
+    //   state.isLoggedIn = true;
+    //   state.isLoading = false;
+    //   state.initialRoute = "Home";
+    // },
     restoreSession: (
-      state,
-      action: PayloadAction<{
-        token: string;
-        user: User | null;
-      }>
-    ) => {
-      state.token = action.payload.token;
-      state.user = action.payload.user;
-      state.isLoggedIn = true;
-      state.isLoading = false;
-      state.initialRoute = "Home";
-    },
+  state,
+  action: PayloadAction<{
+    token: string;
+    user: User;
+  }>
+) => {
+  state.token = action.payload.token;
+  state.user = action.payload.user;
+  state.isLoggedIn = true;
+  state.isLoading = false;
+  state.initialRoute = "Home";
+},
 
     finishLoading: (state) => {
       state.isLoading = false;

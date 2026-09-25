@@ -1,4 +1,5 @@
 import React from "react";
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import {
   SafeAreaView,
   View,
@@ -60,22 +61,51 @@ const ProfileScreen = ({ navigation }: Props) => {
           try {
             console.log("LOGOUT STARTED");
 
-            // AsyncStorage clear
+            // =================================
+            // 1. GOOGLE SIGN OUT
+            // =================================
+            try {
+              await GoogleSignin.signOut();
+
+              console.log(
+                "GOOGLE SIGN OUT DONE"
+              );
+            } catch (googleError) {
+              // User Google se login nahi tha
+              // to bhi logout continue hoga
+              console.log(
+                "GOOGLE SIGN OUT SKIPPED:",
+                googleError
+              );
+            }
+
+            // =================================
+            // 2. CLEAR APP SESSION
+            // =================================
             await clearSession();
 
-            console.log("SESSION CLEARED");
+            console.log(
+              "SESSION CLEARED"
+            );
 
-            // Redux clear
+            // =================================
+            // 3. CLEAR REDUX
+            // =================================
             dispatch(logout());
 
-            console.log("REDUX LOGOUT DONE");
+            console.log(
+              "REDUX LOGOUT DONE"
+            );
 
           } catch (error) {
-            console.log("LOGOUT ERROR:", error);
+            console.log(
+              "LOGOUT ERROR:",
+              error
+            );
 
             Alert.alert(
               "Logout Failed",
-              String(error)
+              "Something went wrong while logging out."
             );
           }
         },
