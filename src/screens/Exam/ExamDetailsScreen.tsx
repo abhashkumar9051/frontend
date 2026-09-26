@@ -1783,4 +1783,5 @@ const styles = StyleSheet.create({
   pyqRow: { backgroundColor: "#fff", padding: 14, borderRadius: 15, flexDirection: "row", alignItems: "center", marginBottom: 9, elevation: 1 },
   pyqYear: { width: 50, height: 35, borderRadius: 9, backgroundColor: "#EEF2FF", color: "#4F46E5", textAlign: "center", textAlignVertical: "center", fontSize: 9, fontWeight: "900", paddingTop: 10 },
 });
+//
 export default ExamDetailsScreen;
