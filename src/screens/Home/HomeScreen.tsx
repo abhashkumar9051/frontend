@@ -1,10 +1,17 @@
+
+
+import { getToken } from "../../services/authService";
+
 import React, {
+  useCallback,
   useEffect,
   useState,
 } from "react";
 
 import {
   ActivityIndicator,
+  Alert,
+  RefreshControl,
   SafeAreaView,
   View,
   Text,
@@ -20,7 +27,6 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useSelector } from "react-redux";
 
 import type { RootState } from "../../redux/store";
-
 import type { AppStackParamList } from "../../navigation/AppNavigator";
 
 import {
@@ -34,9 +40,9 @@ type Props = NativeStackScreenProps<
 >;
 
 const HomeScreen = ({ navigation }: Props) => {
-  // ==========================================
+  // =====================================================
   // USER
-  // ==========================================
+  // =====================================================
 
   const user = useSelector(
     (state: RootState) => state.auth.user
@@ -48,134 +54,208 @@ const HomeScreen = ({ navigation }: Props) => {
   const profileLetter =
     userName.charAt(0).toUpperCase();
 
-  // ==========================================
+  // =====================================================
   // EXAMS
-  // ==========================================
+  // =====================================================
 
-  const [exams, setExams] = useState<Exam[]>(
+  const [exams, setExams] = useState<Exam[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState("");
+  const [searchText, setSearchText] = useState("");
+type DashboardStats = {
+  testsTaken: number;
+  averageScore: number;
+  completed: number;
+};
+
+const [stats, setStats] = useState<DashboardStats>({
+  testsTaken: 0,
+  averageScore: 0,
+  completed: 0,
+});
+
+const [statsLoading, setStatsLoading] = useState(true);
+
+const fetchDashboardStats = useCallback(async () => {
+  try {
+    setStatsLoading(true);
+
+    const token = await getToken();
+
+    if (!token) {
+      console.log("Dashboard stats: login token not found");
+      return;
+    }
+
+    const response = await fetch(
+      "http://10.0.2.2:6001/api/v1/attempts/stats",
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.message || "Stats fetch failed");
+    }
+
+    setStats({
+      testsTaken: Number(result.stats?.testsTaken) || 0,
+      averageScore: Number(result.stats?.averageScore) || 0,
+      completed: Number(result.stats?.completed) || 0,
+    });
+  } catch (error) {
+    console.error("DASHBOARD STATS ERROR:", error);
+  } finally {
+    setStatsLoading(false);
+  }
+}, []);
+
+useEffect(() => {
+  fetchDashboardStats();
+}, [fetchDashboardStats]);
+  // =====================================================
+  // FETCH EXAMS
+  // =====================================================
+
+  const fetchExams = useCallback(
+    async (isRefresh = false) => {
+      try {
+        if (isRefresh) {
+          setRefreshing(true);
+        } else {
+          setIsLoading(true);
+        }
+
+        setError("");
+
+        console.log("=================================");
+        console.log("FETCHING EXAMS...");
+        console.log(
+          "API: http://10.0.2.2:6001/api/v1/exams"
+        );
+
+        const data = await getExams();
+
+        console.log(
+          "EXAMS RECEIVED:",
+          JSON.stringify(data, null, 2)
+        );
+
+        setExams(Array.isArray(data) ? data : []);
+      } catch (error: any) {
+        console.log(
+          "FETCH EXAMS ERROR:",
+          error
+        );
+
+        setError(
+          error?.message ||
+            "Unable to load exams."
+        );
+      } finally {
+        setIsLoading(false);
+        setRefreshing(false);
+      }
+    },
     []
   );
 
-  const [isExamLoading, setIsExamLoading] =
-    useState(true);
-
-  const [examError, setExamError] =
-    useState("");
-
-  const [searchText, setSearchText] =
-    useState("");
-
-  // ==========================================
-  // FETCH EXAMS
-  // ==========================================
-
-  const fetchExams = async () => {
-    try {
-      setIsExamLoading(true);
-      setExamError("");
-
-      console.log(
-        "FETCHING EXAMS..."
-      );
-
-      const data = await getExams();
-
-      console.log(
-        "EXAMS RECEIVED:",
-        data
-      );
-
-      setExams(data);
-    } catch (error: any) {
-      console.log(
-        "FETCH EXAMS ERROR:",
-        error
-      );
-
-      setExamError(
-        error?.message ||
-          "Unable to load exams."
-      );
-    } finally {
-      setIsExamLoading(false);
-    }
-  };
-
-  // ==========================================
+  // =====================================================
   // INITIAL LOAD
-  // ==========================================
+  // =====================================================
 
   useEffect(() => {
     fetchExams();
-  }, []);
+  }, [fetchExams]);
 
-  // ==========================================
-  // SEARCH EXAMS
-  // ==========================================
+  // =====================================================
+  // SEARCH
+  // =====================================================
 
-  const filteredExams = exams.filter(
-    (exam) => {
-      const search =
-        searchText
-          .trim()
-          .toLowerCase();
+  const filteredExams = exams.filter((exam) => {
+    const search = searchText
+      .trim()
+      .toLowerCase();
 
-      if (!search) {
-        return true;
-      }
-
-      return (
-        exam.name
-          .toLowerCase()
-          .includes(search) ||
-        exam.shortName
-          .toLowerCase()
-          .includes(search) ||
-        (exam.description || "")
-          .toLowerCase()
-          .includes(search)
-      );
+    if (!search) {
+      return true;
     }
-  );
 
-  // ==========================================
+    return (
+      (exam.name || "")
+        .toLowerCase()
+        .includes(search) ||
+      (exam.shortName || "")
+        .toLowerCase()
+        .includes(search) ||
+      (exam.description || "")
+        .toLowerCase()
+        .includes(search)
+    );
+  });
+
+  // =====================================================
   // EXAM ICON
-  // ==========================================
+  // =====================================================
 
   const getExamEmoji = (
     shortName: string
   ) => {
     const name =
-      shortName.toUpperCase();
+      (shortName || "").toUpperCase();
 
-    if (name === "GATE") {
+    if (name.includes("GATE")) {
       return "📚";
     }
 
-    if (name === "BPSC") {
+    if (name.includes("BPSC")) {
       return "🏛️";
     }
 
-    if (name === "SSC") {
+    if (name.includes("SSC")) {
       return "💻";
     }
 
-    if (name === "UPSC") {
+    if (name.includes("UPSC")) {
       return "🎓";
     }
 
     if (
-      name.includes("BANK")
+      name.includes("BANK") ||
+      name.includes("IBPS") ||
+      name.includes("SBI")
     ) {
       return "🏦";
+    }
+
+    if (
+      name.includes("RAILWAY") ||
+      name.includes("RRB")
+    ) {
+      return "🚆";
+    }
+
+    if (name.includes("NEET")) {
+      return "🩺";
+    }
+
+    if (name.includes("JEE")) {
+      return "🎓";
     }
 
     return "📝";
   };
 
-  // ==========================================
-  // EXAM ICON BACKGROUND
-  // ==========================================
+  // =====================================================
+  // ICON BACKGROUND
+  // =====================================================
 
   const getExamIconStyle = (
     index: number
@@ -192,54 +272,48 @@ const HomeScreen = ({ navigation }: Props) => {
     ];
   };
 
-  // ==========================================
+  // =====================================================
   // EXAM CLICK
-  // ==========================================
+  // =====================================================
 
   const handleExamPress = (
-  exam: Exam
-) => {
-  navigation.navigate(
-    "ExamDetails",
-    {
-      examId: exam._id,
-    }
-  );
-};
-
-    /*
-      Next step:
-
-      Exam
-        ↓
-      Subject
-        ↓
-      Test Series
-
-      Abhi sirf selected exam
-      console.log kar rahe hain.
-    */
-
-  // ==========================================
-  // SEE ALL EXAMS
-  // ==========================================
-
-  const handleSeeAllExams = () => {
+    exam: Exam
+  ) => {
     console.log(
-      "ALL EXAMS:",
-      exams
+      "SELECTED EXAM:",
+      exam
     );
 
-    /*
-      Next step me yahan
-      All Exams screen navigate
-      karenge.
-    */
+    navigation.navigate(
+      "ExamDetails",
+      {
+        examId: exam._id,
+      }
+    );
   };
 
-  // ==========================================
-  // RENDER EXAM CARD
-  // ==========================================
+  // =====================================================
+  // SEE ALL
+  // =====================================================
+
+  // const handleSeeAllExams = () => {
+  //   console.log(
+  //     "ALL EXAMS:",
+  //     exams
+  //   );
+
+  //   Alert.alert(
+  //     "Exams",
+  //     `${exams.length} exams available.`
+  //   );
+  // };
+  const handleSeeAllExams = () => {
+  navigation.navigate("AllExams");
+};
+
+  // =====================================================
+  // EXAM CARD
+  // =====================================================
 
   const renderExamCard = (
     exam: Exam,
@@ -278,13 +352,17 @@ const HomeScreen = ({ navigation }: Props) => {
 
         <Text
           style={styles.categorySubtitle}
-          numberOfLines={1}
+          numberOfLines={2}
         >
           {exam.name}
         </Text>
       </TouchableOpacity>
     );
   };
+
+  // =====================================================
+  // UI
+  // =====================================================
 
   return (
     <SafeAreaView
@@ -296,14 +374,22 @@ const HomeScreen = ({ navigation }: Props) => {
       />
 
       <ScrollView
-        showsVerticalScrollIndicator={
-          false
-        }
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={
           styles.scrollContent
         }
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() =>
+              fetchExams(true)
+            }
+          />
+        }
       >
-        {/* ================= HEADER ================= */}
+        {/* =================================================
+            HEADER
+        ================================================= */}
 
         <View style={styles.header}>
           <View style={styles.headerLeft}>
@@ -326,8 +412,6 @@ const HomeScreen = ({ navigation }: Props) => {
             </Text>
           </View>
 
-          {/* PROFILE BUTTON */}
-
           <TouchableOpacity
             style={styles.profileButton}
             activeOpacity={0.8}
@@ -345,7 +429,9 @@ const HomeScreen = ({ navigation }: Props) => {
           </TouchableOpacity>
         </View>
 
-        {/* ================= SEARCH ================= */}
+        {/* =================================================
+            SEARCH
+        ================================================= */}
 
         <View
           style={styles.searchContainer}
@@ -361,24 +447,30 @@ const HomeScreen = ({ navigation }: Props) => {
             placeholderTextColor="#9CA3AF"
             style={styles.searchInput}
             value={searchText}
-            onChangeText={setSearchText}
+            onChangeText={
+              setSearchText
+            }
           />
         </View>
 
-        {/* ================= QUICK STATS ================= */}
+        {/* =================================================
+            QUICK STATS
+        ================================================= */}
 
         <View
           style={styles.statsContainer}
         >
           <View style={styles.statCard}>
-            <Text style={styles.statIcon}>
+            <Text
+              style={styles.statIcon}
+            >
               📝
             </Text>
 
             <Text
               style={styles.statNumber}
             >
-              12
+              {statsLoading ? "..." : stats.testsTaken}
             </Text>
 
             <Text
@@ -389,14 +481,16 @@ const HomeScreen = ({ navigation }: Props) => {
           </View>
 
           <View style={styles.statCard}>
-            <Text style={styles.statIcon}>
+            <Text
+              style={styles.statIcon}
+            >
               🎯
             </Text>
 
             <Text
               style={styles.statNumber}
             >
-              78%
+             {statsLoading ? "..." : `${stats.averageScore}%`}
             </Text>
 
             <Text
@@ -407,7 +501,9 @@ const HomeScreen = ({ navigation }: Props) => {
           </View>
 
           <View style={styles.statCard}>
-            <Text style={styles.statIcon}>
+            <Text
+              style={styles.statIcon}
+            >
               🏆
             </Text>
 
@@ -425,7 +521,9 @@ const HomeScreen = ({ navigation }: Props) => {
           </View>
         </View>
 
-        {/* ================= EXPLORE EXAMS ================= */}
+        {/* =================================================
+            EXPLORE EXAMS
+        ================================================= */}
 
         <View
           style={styles.sectionHeader}
@@ -437,17 +535,23 @@ const HomeScreen = ({ navigation }: Props) => {
           </Text>
 
           <TouchableOpacity
-            onPress={handleSeeAllExams}
+            onPress={
+              handleSeeAllExams
+            }
           >
-            <Text style={styles.seeAll}>
+            <Text
+              style={styles.seeAll}
+            >
               See All
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* ================= EXAM LIST ================= */}
+        {/* =================================================
+            EXAM LIST
+        ================================================= */}
 
-        {isExamLoading ? (
+        {isLoading ? (
           <View
             style={styles.examLoading}
           >
@@ -457,41 +561,99 @@ const HomeScreen = ({ navigation }: Props) => {
             />
 
             <Text
-              style={styles.examLoadingText}
+              style={
+                styles.examLoadingText
+              }
             >
               Loading exams...
             </Text>
           </View>
-        ) : examError ? (
+        ) : error ? (
           <View
-            style={styles.examErrorContainer}
+            style={
+              styles.examErrorContainer
+            }
           >
             <Text
-              style={styles.examErrorText}
+              style={
+                styles.examErrorTitle
+              }
             >
-              {examError}
+              Unable to load exams
+            </Text>
+
+            <Text
+              style={
+                styles.examErrorText
+              }
+            >
+              {error}
             </Text>
 
             <TouchableOpacity
-              style={styles.retryButton}
-              onPress={fetchExams}
+              style={
+                styles.retryButton
+              }
+              onPress={() =>
+                fetchExams()
+              }
             >
               <Text
-                style={styles.retryButtonText}
+                style={
+                  styles.retryButtonText
+                }
               >
                 Retry
               </Text>
             </TouchableOpacity>
           </View>
-        ) : filteredExams.length === 0 ? (
+        ) : filteredExams.length ===
+          0 ? (
           <View
-            style={styles.noExamContainer}
+            style={
+              styles.noExamContainer
+            }
           >
+            <Text
+              style={
+                styles.noExamEmoji
+              }
+            >
+              📚
+            </Text>
+
             <Text
               style={styles.noExamText}
             >
-              No exams found.
+              No exams found
             </Text>
+
+            {searchText.trim() ? (
+              <Text
+                style={
+                  styles.noExamSubText
+                }
+              >
+                Try another search.
+              </Text>
+            ) : (
+              <TouchableOpacity
+                style={
+                  styles.retryButton
+                }
+                onPress={() =>
+                  fetchExams()
+                }
+              >
+                <Text
+                  style={
+                    styles.retryButtonText
+                  }
+                >
+                  Reload Exams
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         ) : (
           <ScrollView
@@ -504,7 +666,10 @@ const HomeScreen = ({ navigation }: Props) => {
             }
           >
             {filteredExams.map(
-              (exam, index) =>
+              (
+                exam,
+                index
+              ) =>
                 renderExamCard(
                   exam,
                   index
@@ -513,7 +678,27 @@ const HomeScreen = ({ navigation }: Props) => {
           </ScrollView>
         )}
 
-        {/* ================= FEATURED TEST ================= */}
+        {/* =================================================
+            DEBUG INFO
+        ================================================= */}
+
+        {!isLoading &&
+          !error && (
+            <Text
+              style={styles.examCount}
+            >
+              {filteredExams.length} exam
+              {filteredExams.length !==
+              1
+                ? "s"
+                : ""}{" "}
+              available
+            </Text>
+          )}
+
+        {/* =================================================
+            FEATURED TEST
+        ================================================= */}
 
         <View
           style={styles.sectionHeader}
@@ -525,7 +710,9 @@ const HomeScreen = ({ navigation }: Props) => {
           </Text>
 
           <TouchableOpacity>
-            <Text style={styles.seeAll}>
+            <Text
+              style={styles.seeAll}
+            >
               See All
             </Text>
           </TouchableOpacity>
@@ -539,7 +726,9 @@ const HomeScreen = ({ navigation }: Props) => {
             style={styles.featuredTop}
           >
             <View
-              style={styles.featuredBadge}
+              style={
+                styles.featuredBadge
+              }
             >
               <Text
                 style={
@@ -612,7 +801,9 @@ const HomeScreen = ({ navigation }: Props) => {
           </View>
         </TouchableOpacity>
 
-        {/* ================= QUICK ACCESS ================= */}
+        {/* =================================================
+            QUICK ACCESS
+        ================================================= */}
 
         <Text
           style={[
@@ -623,7 +814,9 @@ const HomeScreen = ({ navigation }: Props) => {
           Quick Access
         </Text>
 
-        <View style={styles.quickGrid}>
+        <View
+          style={styles.quickGrid}
+        >
           <TouchableOpacity
             style={styles.quickCard}
           >
@@ -631,14 +824,18 @@ const HomeScreen = ({ navigation }: Props) => {
               style={styles.quickIcon}
             >
               <Text
-                style={styles.quickEmoji}
+                style={
+                  styles.quickEmoji
+                }
               >
                 📖
               </Text>
             </View>
 
             <Text
-              style={styles.quickCardTitle}
+              style={
+                styles.quickCardTitle
+              }
             >
               Test Series
             </Text>
@@ -659,14 +856,18 @@ const HomeScreen = ({ navigation }: Props) => {
               style={styles.quickIcon}
             >
               <Text
-                style={styles.quickEmoji}
+                style={
+                  styles.quickEmoji
+                }
               >
                 📊
               </Text>
             </View>
 
             <Text
-              style={styles.quickCardTitle}
+              style={
+                styles.quickCardTitle
+              }
             >
               My Results
             </Text>
@@ -687,14 +888,18 @@ const HomeScreen = ({ navigation }: Props) => {
               style={styles.quickIcon}
             >
               <Text
-                style={styles.quickEmoji}
+                style={
+                  styles.quickEmoji
+                }
               >
                 ⏱️
               </Text>
             </View>
 
             <Text
-              style={styles.quickCardTitle}
+              style={
+                styles.quickCardTitle
+              }
             >
               Practice
             </Text>
@@ -715,14 +920,18 @@ const HomeScreen = ({ navigation }: Props) => {
               style={styles.quickIcon}
             >
               <Text
-                style={styles.quickEmoji}
+                style={
+                  styles.quickEmoji
+                }
               >
                 ⭐
               </Text>
             </View>
 
             <Text
-              style={styles.quickCardTitle}
+              style={
+                styles.quickCardTitle
+              }
             >
               Bookmarks
             </Text>
@@ -737,7 +946,9 @@ const HomeScreen = ({ navigation }: Props) => {
           </TouchableOpacity>
         </View>
 
-        {/* ================= RECENT TESTS ================= */}
+        {/* =================================================
+            RECENT TESTS
+        ================================================= */}
 
         <View
           style={styles.sectionHeader}
@@ -749,13 +960,13 @@ const HomeScreen = ({ navigation }: Props) => {
           </Text>
 
           <TouchableOpacity>
-            <Text style={styles.seeAll}>
+            <Text
+              style={styles.seeAll}
+            >
               View All
             </Text>
           </TouchableOpacity>
         </View>
-
-        {/* TEST 1 */}
 
         <View
           style={styles.recentCard}
@@ -802,9 +1013,13 @@ const HomeScreen = ({ navigation }: Props) => {
           </View>
 
           <View
-            style={styles.scoreContainer}
+            style={
+              styles.scoreContainer
+            }
           >
-            <Text style={styles.score}>
+            <Text
+              style={styles.score}
+            >
               72%
             </Text>
 
@@ -815,8 +1030,6 @@ const HomeScreen = ({ navigation }: Props) => {
             </Text>
           </View>
         </View>
-
-        {/* TEST 2 */}
 
         <View
           style={styles.recentCard}
@@ -863,9 +1076,13 @@ const HomeScreen = ({ navigation }: Props) => {
           </View>
 
           <View
-            style={styles.scoreContainer}
+            style={
+              styles.scoreContainer
+            }
           >
-            <Text style={styles.score}>
+            <Text
+              style={styles.score}
+            >
               84%
             </Text>
 
@@ -877,7 +1094,9 @@ const HomeScreen = ({ navigation }: Props) => {
           </View>
         </View>
 
-        {/* ================= DAILY GOAL ================= */}
+        {/* =================================================
+            DAILY GOAL
+        ================================================= */}
 
         <View
           style={styles.motivationCard}
@@ -889,32 +1108,42 @@ const HomeScreen = ({ navigation }: Props) => {
           </Text>
 
           <View
-            style={styles.motivationContent}
+            style={
+              styles.motivationContent
+            }
           >
             <Text
-              style={styles.motivationTitle}
+              style={
+                styles.motivationTitle
+              }
             >
               Your daily goal
             </Text>
 
             <Text
-              style={styles.motivationText}
+              style={
+                styles.motivationText
+              }
             >
               Complete 20 questions today
             </Text>
 
             <View
-              style={styles.goalBackground}
+              style={
+                styles.goalBackground
+              }
             >
               <View
-                style={styles.goalProgress}
+                style={
+                  styles.goalProgress
+                }
               />
             </View>
 
             <Text
               style={styles.goalText}
             >
-              12 / 20 questions completed
+            {statsLoading ? "..." : stats.testsTaken}
             </Text>
           </View>
         </View>
@@ -929,9 +1158,9 @@ const HomeScreen = ({ navigation }: Props) => {
 
 export default HomeScreen;
 
-/* ================================================= */
-/*                       STYLES                      */
-/* ================================================= */
+// =====================================================
+// STYLES
+// =====================================================
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -943,7 +1172,7 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
   },
 
-  /* HEADER */
+  // HEADER
 
   header: {
     backgroundColor: "#4F46E5",
@@ -994,7 +1223,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
 
-  /* SEARCH */
+  // SEARCH
 
   searchContainer: {
     height: 55,
@@ -1027,7 +1256,7 @@ const styles = StyleSheet.create({
     color: "#111827",
   },
 
-  /* STATS */
+  // STATS
 
   statsContainer: {
     flexDirection: "row",
@@ -1070,7 +1299,7 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
 
-  /* SECTION */
+  // SECTION
 
   sectionHeader: {
     flexDirection: "row",
@@ -1093,7 +1322,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  /* EXAM LOADING */
+  // EXAM
 
   examLoading: {
     height: 130,
@@ -1113,6 +1342,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#FEF2F2",
     borderRadius: 16,
     alignItems: "center",
+  },
+
+  examErrorTitle: {
+    color: "#991B1B",
+    fontSize: 15,
+    fontWeight: "800",
+    marginBottom: 6,
   },
 
   examErrorText: {
@@ -1136,28 +1372,50 @@ const styles = StyleSheet.create({
   },
 
   noExamContainer: {
-    height: 100,
+    minHeight: 130,
     justifyContent: "center",
     alignItems: "center",
   },
 
-  noExamText: {
-    color: "#6B7280",
-    fontSize: 13,
+  noExamEmoji: {
+    fontSize: 30,
+    marginBottom: 8,
   },
 
-  /* CATEGORIES */
+  noExamText: {
+    color: "#111827",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+
+  noExamSubText: {
+    color: "#6B7280",
+    fontSize: 12,
+    marginTop: 5,
+  },
+
+  examCount: {
+    color: "#6B7280",
+    fontSize: 11,
+    textAlign: "center",
+    marginTop: 8,
+  },
+
+  // CATEGORIES
 
   categoryScroll: {
     paddingHorizontal: 16,
   },
 
   categoryCard: {
-    width: 105,
+    width: 120,
+    minHeight: 135,
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
     paddingVertical: 14,
+    paddingHorizontal: 8,
     alignItems: "center",
+    justifyContent: "center",
     marginHorizontal: 5,
 
     shadowColor: "#000000",
@@ -1213,7 +1471,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  /* FEATURED TEST */
+  // FEATURED
 
   featuredCard: {
     marginHorizontal: 20,
@@ -1297,7 +1555,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
 
-  /* QUICK ACCESS */
+  // QUICK ACCESS
 
   quickTitle: {
     marginHorizontal: 20,
@@ -1355,7 +1613,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 
-  /* RECENT TEST */
+  // RECENT
 
   recentCard: {
     backgroundColor: "#FFFFFF",
@@ -1437,7 +1695,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  /* MOTIVATION */
+  // MOTIVATION
 
   motivationCard: {
     marginHorizontal: 20,

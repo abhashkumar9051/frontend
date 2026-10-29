@@ -1,109 +1,756 @@
-import React, { useState } from "react";
-import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useEffect, useState } from "react";
+
+import {
+  ActivityIndicator,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { AppStackParamList } from "../../navigation/AppNavigator";
 
-type Props = NativeStackScreenProps<AppStackParamList, "TestInstructions">;
+type Props = NativeStackScreenProps<
+  AppStackParamList,
+  "TestInstructions"
+>;
 
-const TestInstructionsScreen = ({ route, navigation }: Props) => {
-  const [checked, setChecked] = useState(false);
+const API_URL = "http://10.0.2.2:6001";
+
+/* ================================================= */
+/* TYPES */
+/* ================================================= */
+
+type Test = {
+  _id: string;
+
+  name?: string;
+  title?: string;
+  description?: string;
+
+  durationMinutes?: number;
+  duration?: number;
+
+  totalQuestions?: number;
+  questions?: number;
+
+  totalMarks?: number;
+  marks?: number;
+
+  negativeMarking?: boolean;
+  negativeMarks?: number;
+
+  isActive?: boolean;
+};
+
+type Question = {
+  _id: string;
+
+  question?: string;
+  questionText?: string;
+  text?: string;
+
+  options?: string[];
+
+  optionA?: string;
+  optionB?: string;
+  optionC?: string;
+  optionD?: string;
+
+  marks?: number;
+  order?: number;
+};
+
+/* ================================================= */
+/* SCREEN */
+/* ================================================= */
+
+const TestInstructionsScreen = ({
+  route,
+  navigation,
+}: Props) => {
+  const {
+    testId,
+    subjectId,
+  } = route.params;
+
+  const [test, setTest] =
+    useState<Test | null>(null);
+
+  const [questions, setQuestions] =
+    useState<Question[]>([]);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState("");
+
+  const [checked, setChecked] =
+    useState(false);
+
+  /* ================================================= */
+  /* FETCH TEST */
+  /* ================================================= */
+
+  useEffect(() => {
+    const fetchTest = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        console.log(
+          "================================"
+        );
+
+        console.log(
+          "FETCHING TEST INSTRUCTIONS"
+        );
+
+        console.log(
+          "TEST ID:",
+          testId
+        );
+
+        console.log(
+          "SUBJECT ID:",
+          subjectId
+        );
+
+        console.log(
+          "================================"
+        );
+
+        const response = await fetch(
+          `${API_URL}/api/v1/tests/${testId}/questions`
+        );
+
+        const data = await response.json();
+
+        console.log(
+          "TEST INSTRUCTIONS RESPONSE:",
+          JSON.stringify(data, null, 2)
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            data?.message ||
+              "Unable to load test."
+          );
+        }
+
+        setTest(data.test || null);
+
+        const backendQuestions =
+          Array.isArray(data.questions)
+            ? data.questions
+            : [];
+
+        const sortedQuestions =
+          [...backendQuestions].sort(
+            (a, b) =>
+              (a.order ?? 0) -
+              (b.order ?? 0)
+          );
+
+        setQuestions(
+          sortedQuestions
+        );
+      } catch (err: any) {
+        console.log(
+          "TEST INSTRUCTIONS ERROR:",
+          err
+        );
+
+        setError(
+          err?.message ||
+            "Unable to load test."
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (testId) {
+      fetchTest();
+    } else {
+      setLoading(false);
+      setError("Test ID is missing.");
+    }
+  }, [testId, subjectId]);
+
+  /* ================================================= */
+  /* START TEST */
+/* ================================================= */
 
   const start = () => {
-    if (!checked) return;
+    if (!checked) {
+      return;
+    }
+
     navigation.replace("Test", {
-      testId: route.params.testId,
-      subjectId: route.params.subjectId,
+      testId,
+      subjectId,
     });
   };
 
-  return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}><Text style={styles.back}>‹</Text></TouchableOpacity>
-          <Text style={styles.title}>Test Instructions</Text>
-          <View style={{ width: 30 }} />
-        </View>
+  /* ================================================= */
+  /* LOADING */
+/* ================================================= */
 
-        <View style={styles.hero}>
-          <Text style={styles.icon}>🧠</Text>
-          <Text style={styles.heroTitle}>Data Structures & Algorithms</Text>
-          <Text style={styles.heroSub}>Test 1 • Fundamentals</Text>
-        </View>
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.center}>
+        <ActivityIndicator
+          size="large"
+          color="#4F46E5"
+        />
 
-        <View style={styles.stats}>
-          <Stat value="50" label="Questions" />
-          <Stat value="180" label="Minutes" />
-          <Stat value="100" label="Marks" />
-        </View>
+        <Text style={styles.loadingText}>
+          Loading test instructions...
+        </Text>
+      </SafeAreaView>
+    );
+  }
 
-        <View style={styles.section}>
-          <Text style={styles.heading}>Before you start</Text>
-          {[
-            "All questions are multiple choice (MCQ).",
-            "Each question carries 2 marks.",
-            "You can navigate between questions.",
-            "Timer will not stop during the test.",
-            "Auto submit when time is over.",
-          ].map((x) => (
-            <View style={styles.rule} key={x}>
-              <Text style={styles.ruleIcon}>✓</Text>
-              <Text style={styles.ruleText}>{x}</Text>
-            </View>
-          ))}
-        </View>
+  /* ================================================= */
+  /* ERROR */
+/* ================================================= */
 
-        <TouchableOpacity style={styles.checkRow} onPress={() => setChecked(!checked)}>
-          <View style={[styles.checkbox, checked && styles.checked]}>
-            {checked && <Text style={styles.check}>✓</Text>}
-          </View>
-          <Text style={styles.checkText}>I have read and understood the instructions.</Text>
-        </TouchableOpacity>
+  if (error || !test) {
+    return (
+      <SafeAreaView style={styles.center}>
+        <Text style={styles.errorIcon}>
+          ⚠️
+        </Text>
+
+        <Text style={styles.errorTitle}>
+          Unable to load test
+        </Text>
+
+        <Text style={styles.errorText}>
+          {error || "Test not found."}
+        </Text>
 
         <TouchableOpacity
-          style={[styles.start, !checked && styles.disabled]}
+          style={styles.backButton}
+          onPress={() =>
+            navigation.goBack()
+          }
+        >
+          <Text style={styles.backButtonText}>
+            Go Back
+          </Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
+
+  /* ================================================= */
+  /* DYNAMIC TEST DATA */
+/* ================================================= */
+
+  const testName =
+    test.name ||
+    test.title ||
+    "Test";
+
+  const duration =
+    test.durationMinutes ??
+    test.duration ??
+    0;
+
+  const totalQuestions =
+    questions.length ||
+    test.totalQuestions ||
+    test.questions ||
+    0;
+
+  const totalMarks =
+    test.totalMarks ??
+    test.marks ??
+    questions.reduce(
+      (total, question) =>
+        total +
+        (question.marks ?? 0),
+      0
+    );
+
+  const questionMarks =
+    totalQuestions > 0
+      ? Math.round(
+          totalMarks /
+            totalQuestions
+        )
+      : 0;
+
+  return (
+    <SafeAreaView style={styles.safe}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={
+          styles.content
+        }
+      >
+        {/* ================================================= */}
+        {/* HEADER */}
+        {/* ================================================= */}
+
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() =>
+              navigation.goBack()
+            }
+          >
+            <Text style={styles.back}>
+              ‹
+            </Text>
+          </TouchableOpacity>
+
+          <Text style={styles.title}>
+            Test Instructions
+          </Text>
+
+          <View
+            style={{ width: 30 }}
+          />
+        </View>
+
+        {/* ================================================= */}
+        {/* HERO */}
+        {/* ================================================= */}
+
+        <View style={styles.hero}>
+          <Text style={styles.icon}>
+            🧠
+          </Text>
+
+          <Text style={styles.heroTitle}>
+            {testName}
+          </Text>
+
+          <Text style={styles.heroSub}>
+            Test Instructions
+          </Text>
+        </View>
+
+        {/* ================================================= */}
+        {/* STATS */}
+        {/* ================================================= */}
+
+        <View style={styles.stats}>
+          <Stat
+            value={String(
+              totalQuestions
+            )}
+            label="Questions"
+          />
+
+          <Stat
+            value={String(
+              duration
+            )}
+            label="Minutes"
+          />
+
+          <Stat
+            value={String(
+              totalMarks
+            )}
+            label="Marks"
+          />
+        </View>
+
+        {/* ================================================= */}
+        {/* BEFORE YOU START */}
+        {/* ================================================= */}
+
+        <View style={styles.section}>
+          <Text style={styles.heading}>
+            Before you start
+          </Text>
+
+          <Instruction
+            text={
+              "All questions are multiple choice (MCQ)."
+            }
+          />
+
+          <Instruction
+            text={
+              questionMarks > 0
+                ? `Each question carries ${questionMarks} mark${
+                    questionMarks > 1
+                      ? "s"
+                      : ""
+                  }.`
+                : "Marks are based on the test configuration."
+            }
+          />
+
+          <Instruction
+            text={
+              "You can navigate between questions."
+            }
+          />
+
+          <Instruction
+            text={
+              "Timer will not stop during the test."
+            }
+          />
+
+          <Instruction
+            text={
+              "Auto submit when time is over."
+            }
+          />
+
+          {test.negativeMarking && (
+            <Instruction
+              text={
+                `Negative marking applies${
+                  test.negativeMarks
+                    ? `: ${test.negativeMarks} mark${
+                        test.negativeMarks > 1
+                          ? "s"
+                          : ""
+                      } may be deducted.`
+                    : "."
+                }`
+              }
+            />
+          )}
+        </View>
+
+        {/* ================================================= */}
+        {/* AGREEMENT */}
+        {/* ================================================= */}
+
+        <TouchableOpacity
+          style={styles.checkRow}
+          onPress={() =>
+            setChecked(!checked)
+          }
+          activeOpacity={0.8}
+        >
+          <View
+            style={[
+              styles.checkbox,
+              checked &&
+                styles.checked,
+            ]}
+          >
+            {checked && (
+              <Text style={styles.check}>
+                ✓
+              </Text>
+            )}
+          </View>
+
+          <Text style={styles.checkText}>
+            I have read and understood
+            the instructions.
+          </Text>
+        </TouchableOpacity>
+
+        {/* ================================================= */}
+        {/* START */}
+        {/* ================================================= */}
+
+        <TouchableOpacity
+          style={[
+            styles.start,
+            !checked &&
+              styles.disabled,
+          ]}
           onPress={start}
           disabled={!checked}
+          activeOpacity={0.8}
         >
-          <Text style={styles.startText}>Start Test</Text>
+          <Text style={styles.startText}>
+            Start Test
+          </Text>
         </TouchableOpacity>
+
+        <View
+          style={{
+            height: 20,
+          }}
+        />
       </ScrollView>
     </SafeAreaView>
   );
 };
 
-const Stat = ({ value, label }: any) => (
-  <View style={{ flex: 1, alignItems: "center" }}>
-    <Text style={styles.statValue}>{value}</Text>
-    <Text style={styles.statLabel}>{label}</Text>
-  </View>
-);
+/* ================================================= */
+/* STAT */
+/* ================================================= */
+
+const Stat = ({
+  value,
+  label,
+}: {
+  value: string;
+  label: string;
+}) => {
+  return (
+    <View style={styles.stat}>
+      <Text style={styles.statValue}>
+        {value}
+      </Text>
+
+      <Text style={styles.statLabel}>
+        {label}
+      </Text>
+    </View>
+  );
+};
+
+/* ================================================= */
+/* INSTRUCTION */
+/* ================================================= */
+
+const Instruction = ({
+  text,
+}: {
+  text: string;
+}) => {
+  return (
+    <View style={styles.rule}>
+      <Text style={styles.ruleIcon}>
+        ✓
+      </Text>
+
+      <Text style={styles.ruleText}>
+        {text}
+      </Text>
+    </View>
+  );
+};
+
+/* ================================================= */
+/* STYLES */
+/* ================================================= */
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#F8FAFC" },
-  content: { padding: 17 },
-  header: { height: 52, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  back: { fontSize: 30 },
-  title: { fontSize: 16, fontWeight: "900" },
-  hero: { backgroundColor: "#312E81", borderRadius: 19, padding: 18, alignItems: "center", marginTop: 10 },
-  icon: { fontSize: 35 },
-  heroTitle: { color: "#fff", fontSize: 17, fontWeight: "900", marginTop: 8, textAlign: "center" },
-  heroSub: { color: "#C7D2FE", fontSize: 10, marginTop: 4 },
-  stats: { backgroundColor: "#fff", marginTop: 12, borderRadius: 16, paddingVertical: 18, flexDirection: "row", elevation: 1 },
-  statValue: { fontSize: 18, fontWeight: "900" },
-  statLabel: { fontSize: 9, color: "#64748B", marginTop: 3 },
-  section: { marginTop: 25 },
-  heading: { fontSize: 19, fontWeight: "900", marginBottom: 12 },
-  rule: { backgroundColor: "#fff", padding: 14, borderRadius: 13, flexDirection: "row", alignItems: "center", marginBottom: 8 },
-  ruleIcon: { width: 25, height: 25, borderRadius: 13, backgroundColor: "#ECFDF5", color: "#059669", textAlign: "center", textAlignVertical: "center", fontWeight: "900" },
-  ruleText: { flex: 1, marginLeft: 10, fontSize: 11, color: "#334155" },
-  checkRow: { flexDirection: "row", alignItems: "center", marginTop: 20 },
-  checkbox: { width: 22, height: 22, borderRadius: 5, borderWidth: 1.5, borderColor: "#CBD5E1", alignItems: "center", justifyContent: "center" },
-  checked: { backgroundColor: "#4F46E5", borderColor: "#4F46E5" },
-  check: { color: "#fff", fontWeight: "900" },
-  checkText: { marginLeft: 9, fontSize: 11, color: "#475569", flex: 1 },
-  start: { marginTop: 20, backgroundColor: "#4F46E5", paddingVertical: 15, borderRadius: 14, alignItems: "center" },
-  disabled: { opacity: 0.45 },
-  startText: { color: "#fff", fontSize: 14, fontWeight: "900" },
+  safe: {
+    flex: 1,
+    backgroundColor: "#F8FAFC",
+  },
+
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 25,
+    backgroundColor: "#F8FAFC",
+  },
+
+  loadingText: {
+    marginTop: 12,
+    fontSize: 12,
+    color: "#64748B",
+  },
+
+  errorIcon: {
+    fontSize: 40,
+  },
+
+  errorTitle: {
+    marginTop: 12,
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#0F172A",
+  },
+
+  errorText: {
+    marginTop: 7,
+    fontSize: 12,
+    color: "#64748B",
+    textAlign: "center",
+  },
+
+  backButton: {
+    marginTop: 20,
+    backgroundColor: "#4F46E5",
+    paddingHorizontal: 25,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+
+  backButtonText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "900",
+  },
+
+  content: {
+    padding: 17,
+  },
+
+  header: {
+    height: 52,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  back: {
+    fontSize: 30,
+    color: "#0F172A",
+  },
+
+  title: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: "#0F172A",
+  },
+
+  hero: {
+    backgroundColor: "#312E81",
+    borderRadius: 19,
+    padding: 20,
+    alignItems: "center",
+    marginTop: 10,
+  },
+
+  icon: {
+    fontSize: 35,
+  },
+
+  heroTitle: {
+    color: "#FFFFFF",
+    fontSize: 17,
+    fontWeight: "900",
+    marginTop: 8,
+    textAlign: "center",
+  },
+
+  heroSub: {
+    color: "#C7D2FE",
+    fontSize: 10,
+    marginTop: 5,
+  },
+
+  stats: {
+    backgroundColor: "#FFFFFF",
+    marginTop: 12,
+    borderRadius: 16,
+    paddingVertical: 18,
+    flexDirection: "row",
+    elevation: 1,
+  },
+
+  stat: {
+    flex: 1,
+    alignItems: "center",
+  },
+
+  statValue: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#0F172A",
+  },
+
+  statLabel: {
+    fontSize: 9,
+    color: "#64748B",
+    marginTop: 3,
+  },
+
+  section: {
+    marginTop: 25,
+  },
+
+  heading: {
+    fontSize: 19,
+    fontWeight: "900",
+    color: "#0F172A",
+    marginBottom: 12,
+  },
+
+  rule: {
+    backgroundColor: "#FFFFFF",
+    padding: 14,
+    borderRadius: 13,
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+
+  ruleIcon: {
+    width: 25,
+    height: 25,
+    borderRadius: 13,
+    backgroundColor: "#ECFDF5",
+    color: "#059669",
+    textAlign: "center",
+    textAlignVertical: "center",
+    fontWeight: "900",
+  },
+
+  ruleText: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 11,
+    color: "#334155",
+    lineHeight: 16,
+  },
+
+  checkRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 20,
+  },
+
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    borderColor: "#CBD5E1",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  checked: {
+    backgroundColor: "#4F46E5",
+    borderColor: "#4F46E5",
+  },
+
+  check: {
+    color: "#FFFFFF",
+    fontWeight: "900",
+  },
+
+  checkText: {
+    marginLeft: 9,
+    fontSize: 11,
+    color: "#475569",
+    flex: 1,
+  },
+
+  start: {
+    marginTop: 20,
+    backgroundColor: "#4F46E5",
+    paddingVertical: 15,
+    borderRadius: 14,
+    alignItems: "center",
+  },
+
+  disabled: {
+    opacity: 0.45,
+  },
+
+  startText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "900",
+  },
 });
+
 export default TestInstructionsScreen;
