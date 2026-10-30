@@ -31,7 +31,7 @@ const RootNavigator = () => {
         const sessionPromise = getSession();
 
         // Minimum 2.5 seconds splash
-        const splashTimer = new Promise((resolve) => {
+        const splashTimer = new Promise<void>((resolve) => {
           setTimeout(resolve, 2500);
         });
 

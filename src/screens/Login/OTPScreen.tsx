@@ -510,7 +510,6 @@ const OTPScreen = ({
 
       <StatusBar
         barStyle="dark-content"
-        backgroundColor="#FFFFFF"
       />
 
 

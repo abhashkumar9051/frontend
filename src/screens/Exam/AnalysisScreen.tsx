@@ -1,4 +1,5 @@
 import React, {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -501,7 +502,7 @@ const AnalysisScreen = ({
   /* GET ATTEMPT ANSWER */
   /* ================================================= */
 
-  const getAttemptAnswer = (
+  const getAttemptAnswer = useCallback((
     questionId: string
   ): AttemptAnswer | null => {
 
@@ -521,14 +522,14 @@ const AnalysisScreen = ({
       );
 
     return answer || null;
-  };
+  }, [attempt]);
 
 
   /* ================================================= */
   /* QUESTION STATUS */
   /* ================================================= */
 
-  const getQuestionStatus = (
+  const getQuestionStatus = useCallback((
     question: Question
   ):
     | "correct"
@@ -553,7 +554,7 @@ const AnalysisScreen = ({
     }
 
     return "incorrect";
-  };
+  }, [getAttemptAnswer]);
 
 
   /* ================================================= */
@@ -579,7 +580,7 @@ const AnalysisScreen = ({
     }, [
       questions,
       filter,
-      attempt,
+      getQuestionStatus,
     ]);
 
 

@@ -132,7 +132,6 @@ const ProfileScreen = ({ navigation }: Props) => {
 
       <StatusBar
         barStyle="light-content"
-        backgroundColor="#4F46E5"
       />
 
       <ScrollView

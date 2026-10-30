@@ -1863,6 +1863,8 @@ const TestScreen = ({
 
   const submittedRef =
     useRef(false);
+  const submitTestRef =
+    useRef<() => Promise<void>>(async () => {});
 
   /* ================================================= */
   /* FETCH QUESTIONS */
@@ -2096,7 +2098,7 @@ const TestScreen = ({
                   true;
 
                 setTimeout(() => {
-                  submitTest();
+                  submitTestRef.current();
                 }, 100);
               }
 
@@ -2311,9 +2313,6 @@ const submitTest = async () => {
     const total =
       questions.length;
 
-    const answered =
-      correct + incorrect;
-
     const score =
       total > 0
         ? Math.round(
@@ -2508,6 +2507,8 @@ const submitTest = async () => {
   }
 };
 
+submitTestRef.current = submitTest;
+
   /* ================================================= */
   /* TIME TAKEN */
   /* ================================================= */
@@ -2576,7 +2577,6 @@ const submitTest = async () => {
       >
         <StatusBar
           barStyle="dark-content"
-          backgroundColor="#F8FAFC"
         />
 
         <ActivityIndicator
@@ -2607,7 +2607,6 @@ const submitTest = async () => {
       >
         <StatusBar
           barStyle="dark-content"
-          backgroundColor="#F8FAFC"
         />
 
         <Text
@@ -2694,7 +2693,6 @@ const submitTest = async () => {
     >
       <StatusBar
         barStyle="dark-content"
-        backgroundColor="#FFFFFF"
       />
 
       {/* ============================================= */}
@@ -3390,7 +3388,7 @@ const styles =
     },
 
     paletteBackdrop: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
     },
 
     paletteSheet: {

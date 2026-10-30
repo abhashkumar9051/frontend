@@ -390,7 +390,6 @@ const handleGoogleLogin = async () => {
 
       <StatusBar
         barStyle="dark-content"
-        backgroundColor="#F7F8FC"
       />
 
 

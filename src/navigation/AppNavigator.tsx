@@ -117,6 +117,7 @@ export type AppStackParamList = {
 
     score: number;
     total: number;
+    attemptId?: string;
   };
 
   // ==========================================

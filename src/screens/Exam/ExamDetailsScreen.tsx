@@ -257,15 +257,6 @@ const ExamDetailsScreen = ({
   // OPEN FIRST SERIES
   // ==========================================
 
-  const openFirstSeries = () => {
-    if (series.length === 0) {
-      setTab("tests");
-      return;
-    }
-
-    openTestSeries(series[0]);
-  };
-
   // ==========================================
   // GET SUBJECT NAME
   // ==========================================
@@ -430,7 +421,6 @@ const ExamDetailsScreen = ({
     >
       <StatusBar
         barStyle="light-content"
-        backgroundColor="#312E81"
       />
 
       <ScrollView

@@ -24,7 +24,6 @@ import type {
 } from "../../navigation/AppNavigator";
 
 import {
-  getExamById,
   Subject,
   TestSeries,
 } from "../../services/examService";
@@ -299,6 +298,7 @@ const TestSeriesDetailScreen = ({
     [
       seriesId,
       subjectId,
+      route.params.subjectId,
       mode,
     ]
   );
