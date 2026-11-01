@@ -12,13 +12,14 @@ import {
 
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { AppStackParamList } from "../../navigation/AppNavigator";
+import { API_BASE_URL } from "../../config/api";
 
 type Props = NativeStackScreenProps<
   AppStackParamList,
   "TestInstructions"
 >;
 
-const API_URL = "http://10.0.2.2:6001";
+const API_URL = API_BASE_URL;
 
 /* ================================================= */
 /* TYPES */

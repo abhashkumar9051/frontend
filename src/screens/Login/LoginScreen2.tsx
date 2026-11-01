@@ -23,7 +23,7 @@
 //   "Login"
 // >;
 
-// const API_URL = "http://10.0.2.2:6001";
+// const API_URL = API_BASE_URL;
 
 // const LoginScreen = ({ navigation }: Props) => {
 //   const [mobileNumber, setMobileNumber] = useState("");

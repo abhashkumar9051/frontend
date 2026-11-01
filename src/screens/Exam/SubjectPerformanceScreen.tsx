@@ -18,13 +18,14 @@ import {
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import type { AppStackParamList } from "../../navigation/AppNavigator";
+import { API_BASE_URL } from "../../config/api";
 
 type Props = NativeStackScreenProps<
   AppStackParamList,
   "SubjectPerformance"
 >;
 
-const API_URL = "http://10.0.2.2:6001";
+const API_URL = API_BASE_URL;
 
 /* ================================================= */
 /* TYPES */
@@ -145,9 +146,6 @@ const SubjectPerformanceScreen = ({
 
   const [subject, setSubject] =
     useState<Subject | null>(null);
-
-  const [series, setSeries] =
-    useState<TestSeries[]>([]);
 
   const [tests, setTests] =
     useState<Test[]>([]);
@@ -393,10 +391,6 @@ const SubjectPerformanceScreen = ({
 
           setSubject(
             foundSubject
-          );
-
-          setSeries(
-            foundSeries
           );
 
 
@@ -1144,14 +1138,6 @@ const SubjectPerformanceScreen = ({
           >
             Subject Data
           </Text>
-
-
-          <InfoRow
-            label="Test Series"
-            value={String(
-              series.length
-            )}
-          />
 
 
           <InfoRow

@@ -18,14 +18,30 @@ import type { AppStackParamList } from "../../navigation/AppNavigator";
 import {
   getExamById,
   Exam,
+  ContentSection,
   Subject,
-  TestSeries,
 } from "../../services/examService";
+import { API_BASE_URL } from "../../config/api";
 
 type Props = NativeStackScreenProps<
   AppStackParamList,
   "SubjectDetail"
 >;
+
+type SubjectTest = {
+  _id: string;
+  seriesId: string;
+  seriesName: string;
+  sectionId: string | null;
+  title?: string;
+  name?: string;
+  description?: string;
+  totalQuestions?: number;
+  questions?: number;
+  durationMinutes?: number;
+  duration?: number;
+  order?: number;
+};
 
 const SubjectDetailScreen = ({
   route,
@@ -38,8 +54,14 @@ const SubjectDetailScreen = ({
   const [subject, setSubject] =
     useState<Subject | null>(null);
 
-  const [series, setSeries] =
-    useState<TestSeries[]>([]);
+  const [sections, setSections] =
+    useState<ContentSection[]>([]);
+
+  const [activeSectionId, setActiveSectionId] =
+    useState("all");
+
+  const [tests, setTests] =
+    useState<SubjectTest[]>([]);
 
   const [loading, setLoading] =
     useState(true);
@@ -127,6 +149,21 @@ const SubjectDetailScreen = ({
 
         setSubject(selectedSubject);
 
+        const subjectSections = (data.sections || []).filter((section) => {
+          const sectionSubjectId =
+            section.subjectId && typeof section.subjectId === "object"
+              ? section.subjectId._id
+              : section.subjectId;
+          const placement = section.placement || (sectionSubjectId ? "subject_tests" : "exam_tab");
+          return (
+            placement === "subject_tests" &&
+            (!sectionSubjectId || sectionSubjectId === selectedSubject._id)
+          );
+        });
+
+        setSections(subjectSections);
+        setActiveSectionId("all");
+
         // ==================================
         // FILTER SERIES FOR THIS SUBJECT
         // ==================================
@@ -134,8 +171,8 @@ const SubjectDetailScreen = ({
         const subjectSeries =
           data.series.filter((item) => {
             const itemSubjectId =
-              typeof item.subjectId ===
-              "object"
+              item.subjectId &&
+              typeof item.subjectId === "object"
                 ? item.subjectId._id
                 : item.subjectId;
 
@@ -155,7 +192,43 @@ const SubjectDetailScreen = ({
           subjectSeries
         );
 
-        setSeries(subjectSeries);
+        const seriesTestGroups = await Promise.all(
+          subjectSeries.map(async (item) => {
+            const response = await fetch(
+              `${API_BASE_URL}/api/v1/series/${item._id}/tests`
+            );
+            const result = await response.json();
+
+            if (!response.ok) {
+              throw new Error(
+                result?.message ||
+                  `Unable to load tests from ${item.title ?? item.name ?? "this series"}.`
+              );
+            }
+
+            return (Array.isArray(result.tests) ? result.tests : []).map(
+              (test: SubjectTest) => {
+                const sectionId =
+                  item.sectionId && typeof item.sectionId === "object"
+                    ? item.sectionId._id
+                    : item.sectionId || null;
+
+                return {
+                  ...test,
+                  seriesId: item._id,
+                  seriesName: item.title ?? item.name ?? "Tests",
+                  sectionId,
+                };
+              }
+            );
+          })
+        );
+
+        setTests(
+          seriesTestGroups
+            .flat()
+            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+        );
       } catch (err: any) {
         console.log(
           "SUBJECT DETAILS ERROR:",
@@ -166,6 +239,7 @@ const SubjectDetailScreen = ({
           err?.message ||
             "Unable to load subject."
         );
+        setTests([]);
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -192,31 +266,11 @@ const SubjectDetailScreen = ({
     fetchSubject(false);
   };
 
-  // ==========================================
-  // OPEN SERIES
-  // ==========================================
-
-  const openSeries = (
-    item: TestSeries
-  ) => {
-    const selectedSubjectId =
-      typeof item.subjectId ===
-      "object"
-        ? item.subjectId._id
-        : item.subjectId;
-
-    navigation.navigate(
-      "TestSeriesDetail",
-      {
-        subjectId:
-          selectedSubjectId,
-
-        seriesId:
-          item._id,
-
-        mode: "series",
-      }
-    );
+  const openTest = (test: SubjectTest) => {
+    navigation.navigate("TestInstructions", {
+      testId: test._id,
+      subjectId: subject?._id ?? subjectId,
+    });
   };
 
   // ==========================================
@@ -313,8 +367,10 @@ const SubjectDetailScreen = ({
   const subjectIcon =
     subject.icon || "📚";
 
-  const totalTests =
-    series.length;
+  const totalTests = tests.length;
+  const visibleTests = activeSectionId === "all"
+    ? tests.filter((test) => !test.sectionId)
+    : tests.filter((test) => test.sectionId === activeSectionId);
 
   // ==========================================
   // RENDER
@@ -421,11 +477,6 @@ const SubjectDetailScreen = ({
           <View style={styles.stats}>
             <Stat
               value={`${totalTests}`}
-              label="Test Series"
-            />
-
-            <Stat
-              value={`${subject.tests ?? 0}`}
               label="Tests"
             />
 
@@ -437,76 +488,7 @@ const SubjectDetailScreen = ({
         </View>
 
         {/* ================================= */}
-        {/* TABS */}
-        {/* ================================= */}
-
-        <View style={styles.tabs}>
-          <View
-            style={styles.activeTabContainer}
-          >
-            <Text
-              style={styles.active}
-            >
-              Overview
-            </Text>
-          </View>
-
-          <TouchableOpacity
-            onPress={() => {
-              if (
-                series.length > 0
-              ) {
-                openSeries(
-                  series[0]
-                );
-              }
-            }}
-          >
-            <Text
-              style={styles.tab}
-            >
-              Test Series
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => {
-              // PYQ support can be connected
-              // when PYQ series exists.
-              const pyqSeries =
-                series.find(
-                  (item) =>
-                    item.type
-                      ?.toLowerCase() ===
-                    "pyq"
-                );
-
-              if (pyqSeries) {
-                navigation.navigate(
-                  "TestSeriesDetail",
-                  {
-                    subjectId:
-                      subject._id,
-
-                    seriesId:
-                      pyqSeries._id,
-
-                    mode: "pyq",
-                  }
-                );
-              }
-            }}
-          >
-            <Text
-              style={styles.tab}
-            >
-              PYQs
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ================================= */}
-        {/* TEST SERIES */}
+        {/* SUBJECT TESTS */}
         {/* ================================= */}
 
         <View style={styles.section}>
@@ -515,19 +497,61 @@ const SubjectDetailScreen = ({
               styles.sectionTitle
             }
           >
-            Test Series
+            Tests
           </Text>
 
           <Text style={styles.sub}>
-            Choose a test series to
-            start practicing
+            Tests not assigned to a section in {subjectName}
           </Text>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.sectionFilters}
+          >
+            <TouchableOpacity
+              style={[
+                styles.filterChip,
+                activeSectionId === "all" && styles.filterChipActive,
+              ]}
+              onPress={() => setActiveSectionId("all")}
+            >
+              <Text
+                style={[
+                  styles.filterText,
+                  activeSectionId === "all" && styles.filterTextActive,
+                ]}
+              >
+                General Tests
+              </Text>
+            </TouchableOpacity>
+
+            {sections.map((section) => (
+              <TouchableOpacity
+                key={section._id}
+                style={[
+                  styles.filterChip,
+                  activeSectionId === section._id && styles.filterChipActive,
+                ]}
+                onPress={() => setActiveSectionId(section._id)}
+              >
+                <Text
+                  style={[
+                    styles.filterText,
+                    activeSectionId === section._id && styles.filterTextActive,
+                  ]}
+                >
+                  {section.title}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
 
           {/* ================================= */}
           {/* NO SERIES */}
           {/* ================================= */}
 
-          {series.length === 0 && (
+          {visibleTests.length === 0 && (
             <View
               style={
                 styles.emptyCard
@@ -546,7 +570,7 @@ const SubjectDetailScreen = ({
                   styles.emptyTitle
                 }
               >
-                No Test Series
+                {activeSectionId === "all" ? "No General Tests Yet" : "No Tests in This Section"}
               </Text>
 
               <Text
@@ -554,9 +578,9 @@ const SubjectDetailScreen = ({
                   styles.emptyText
                 }
               >
-                Abhi is subject ke
-                liye koi test series
-                available nahi hai.
+                {activeSectionId === "all"
+                  ? `Is subject ke liye abhi koi unsectioned active test available nahi hai.`
+                  : `Is section mein abhi koi test assign nahi hai.`}
               </Text>
 
               <TouchableOpacity
@@ -582,23 +606,19 @@ const SubjectDetailScreen = ({
           {/* SERIES LIST */}
           {/* ================================= */}
 
-          {series.map(
+          {visibleTests.map(
             (
               item,
               index
             ) => (
               <TouchableOpacity
-                key={item._id}
+                key={`${item.seriesId}-${item._id}`}
                 style={
                   index === 0
                     ? styles.primaryCard
                     : styles.whiteCard
                 }
-                onPress={() =>
-                  openSeries(
-                    item
-                  )
-                }
+                onPress={() => openTest(item)}
                 activeOpacity={0.85}
               >
                 {index === 0 && (
@@ -618,7 +638,7 @@ const SubjectDetailScreen = ({
                       : styles.cardTitleDark
                   }
                 >
-                  {item.name}
+                  {item.title || item.name || "Test"}
                 </Text>
 
                 {item.description && (
@@ -647,26 +667,16 @@ const SubjectDetailScreen = ({
                         : styles.cardMeta
                     }
                   >
-                    {item.type ||
-                      "Test Series"}
+                    {item.seriesName} · {item.totalQuestions ?? item.questions ?? 0} questions
                   </Text>
 
-                  {typeof item.price ===
-                    "number" &&
-                    item.price > 0 && (
-                      <Text
-                        style={
-                          index === 0
-                            ? styles.price
-                            : styles.priceDark
-                        }
-                      >
-                        ₹
-                        {
-                          item.price
-                        }
-                      </Text>
-                    )}
+                  {(item.durationMinutes ?? item.duration) ? (
+                    <Text
+                      style={index === 0 ? styles.cardMetaWhite : styles.cardMeta}
+                    >
+                      {item.durationMinutes ?? item.duration} min
+                    </Text>
+                  ) : null}
 
                   <Text
                     style={
@@ -675,9 +685,7 @@ const SubjectDetailScreen = ({
                         : styles.arrow
                     }
                   >
-                    {index === 0
-                      ? "View Tests →"
-                      : "›"}
+                    {index === 0 ? "Start Test →" : "›"}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -922,6 +930,35 @@ const styles =
       fontSize: 11,
       marginTop: 4,
       marginBottom: 13,
+    },
+
+    sectionFilters: {
+      paddingBottom: 12,
+      gap: 8,
+    },
+
+    filterChip: {
+      borderWidth: 1,
+      borderColor: "#E2E8F0",
+      backgroundColor: "#FFFFFF",
+      borderRadius: 18,
+      paddingHorizontal: 13,
+      paddingVertical: 8,
+    },
+
+    filterChipActive: {
+      borderColor: "#4F46E5",
+      backgroundColor: "#4F46E5",
+    },
+
+    filterText: {
+      color: "#475569",
+      fontSize: 11,
+      fontWeight: "700",
+    },
+
+    filterTextActive: {
+      color: "#FFFFFF",
     },
 
     emptyCard: {

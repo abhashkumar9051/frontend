@@ -20,13 +20,14 @@ import {
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import type { AppStackParamList } from "../../navigation/AppNavigator";
+import { API_BASE_URL } from "../../config/api";
 
 type Props = NativeStackScreenProps<
   AppStackParamList,
   "Analysis"
 >;
 
-const API_URL = "http://10.0.2.2:6001";
+const API_URL = API_BASE_URL;
 
 /* ================================================= */
 /* QUESTION TYPE */
@@ -113,7 +114,8 @@ type Attempt = {
         _id: string;
         name?: string;
         shortName?: string;
-      };
+      }
+    | null;
 
   answers: AttemptAnswer[];
 
@@ -1390,18 +1392,9 @@ const AnalysisScreen = ({
         {/* SUBJECT PERFORMANCE */}
         {/* ========================================== */}
 
-        <TouchableOpacity
-          style={
-            styles.primary
-          }
-          onPress={() =>
-            navigation.navigate(
-              "SubjectPerformance",
-              {
-                subjectId,
-              }
-            )
-          }
+        {subjectId ? <TouchableOpacity
+          style={styles.primary}
+          onPress={() => navigation.navigate("SubjectPerformance", { subjectId })}
         >
 
           <Text
@@ -1412,7 +1405,7 @@ const AnalysisScreen = ({
             View Subject-wise Performance
           </Text>
 
-        </TouchableOpacity>
+        </TouchableOpacity> : null}
 
 
         <View

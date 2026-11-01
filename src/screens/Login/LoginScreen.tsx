@@ -31,6 +31,7 @@ import {
   signInWithGoogle,
 } from "../../services/googleAuthService";
 import type { AuthStackParamList } from "../../navigation/AuthNavigator";
+import { API_BASE_URL } from "../../config/api";
 
 
 type Props = NativeStackScreenProps<
@@ -39,7 +40,7 @@ type Props = NativeStackScreenProps<
 >;
 
 
-const API_URL = "http://10.0.2.2:6001";
+const API_URL = API_BASE_URL;
 
 
 const LoginScreen = ({ navigation }: Props) => {
@@ -426,7 +427,7 @@ const handleGoogleLogin = async () => {
               <View style={styles.logoBox}>
 
                 <Text style={styles.logoLetter}>
-                  T
+                  G
                 </Text>
 
               </View>
@@ -435,7 +436,7 @@ const handleGoogleLogin = async () => {
               <View>
 
                 <Text style={styles.brandName}>
-                  TestSeries
+                  GenZExam
                 </Text>
 
                 <Text style={styles.brandTagline}>
@@ -520,7 +521,7 @@ const handleGoogleLogin = async () => {
               <TextInput
                 value={mobileNumber}
                 onChangeText={handleMobileChange}
-                placeholder="Enter your mobile number"
+                placeholder="please use sigin with google "
                 placeholderTextColor="#A1A1AA"
                 keyboardType="number-pad"
                 maxLength={10}
@@ -716,7 +717,7 @@ const handleGoogleLogin = async () => {
 
 
           <Text style={styles.version}>
-            TestSeries • v1.0.0
+            GenZExam
           </Text>
 
 

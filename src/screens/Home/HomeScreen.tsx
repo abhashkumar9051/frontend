@@ -32,6 +32,7 @@ import {
   Exam,
   getExams,
 } from "../../services/examService";
+import { API_BASE_URL } from "../../config/api";
 
 type Props = NativeStackScreenProps<
   AppStackParamList,
@@ -66,15 +67,58 @@ type DashboardStats = {
   testsTaken: number;
   averageScore: number;
   completed: number;
+  questionsToday: number;
 };
+
+type FeaturedTest = {
+  test: {
+    _id: string;
+    title: string;
+    totalQuestions?: number;
+    durationMinutes?: number;
+  };
+  series: {
+    title: string;
+    type?: string;
+    description?: string;
+    subjectId: {
+      _id: string;
+      name: string;
+    };
+  };
+};
+
+type RecentAttempt = {
+  _id: string;
+  testId: {
+    _id: string;
+    title: string;
+    totalQuestions?: number;
+    durationMinutes?: number;
+  };
+  subjectId: {
+    _id: string;
+    name: string;
+  };
+  totalQuestions: number;
+  accuracy: number;
+  submittedAt: string;
+};
+
+const DAILY_QUESTION_GOAL = 20;
 
 const [stats, setStats] = useState<DashboardStats>({
   testsTaken: 0,
   averageScore: 0,
   completed: 0,
+  questionsToday: 0,
 });
 
 const [statsLoading, setStatsLoading] = useState(true);
+const [featuredTest, setFeaturedTest] = useState<FeaturedTest | null>(null);
+const [featuredLoading, setFeaturedLoading] = useState(true);
+const [recentAttempts, setRecentAttempts] = useState<RecentAttempt[]>([]);
+const [recentLoading, setRecentLoading] = useState(true);
 
 const fetchDashboardStats = useCallback(async () => {
   try {
@@ -87,8 +131,20 @@ const fetchDashboardStats = useCallback(async () => {
       return;
     }
 
+    const now = new Date();
+    const dayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    ).toISOString();
+    const dayEnd = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + 1
+    ).toISOString();
+
     const response = await fetch(
-      "http://10.0.2.2:6001/api/v1/attempts/stats",
+      `${API_BASE_URL}/api/v1/attempts/stats?dayStart=${encodeURIComponent(dayStart)}&dayEnd=${encodeURIComponent(dayEnd)}`,
       {
         method: "GET",
         headers: {
@@ -108,6 +164,7 @@ const fetchDashboardStats = useCallback(async () => {
       testsTaken: Number(result.stats?.testsTaken) || 0,
       averageScore: Number(result.stats?.averageScore) || 0,
       completed: Number(result.stats?.completed) || 0,
+      questionsToday: Number(result.stats?.questionsToday) || 0,
     });
   } catch (error) {
     console.error("DASHBOARD STATS ERROR:", error);
@@ -116,9 +173,80 @@ const fetchDashboardStats = useCallback(async () => {
   }
 }, []);
 
+const fetchFeaturedTest = useCallback(async () => {
+  try {
+    setFeaturedLoading(true);
+    const response = await fetch(
+      `${API_BASE_URL}/api/v1/tests/featured`
+    );
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.message || "Featured test fetch failed");
+    }
+
+    setFeaturedTest(result.featured || null);
+  } catch (error) {
+    console.error("FEATURED TEST ERROR:", error);
+    setFeaturedTest(null);
+  } finally {
+    setFeaturedLoading(false);
+  }
+}, []);
+
+const fetchRecentAttempts = useCallback(async () => {
+  try {
+    setRecentLoading(true);
+    const token = await getToken();
+
+    if (!token) {
+      setRecentAttempts([]);
+      return;
+    }
+
+    const response = await fetch(
+      `${API_BASE_URL}/api/v1/attempts/recent?limit=3`,
+      {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.message || "Recent attempts fetch failed");
+    }
+
+    setRecentAttempts(
+      Array.isArray(result.attempts)
+        ? result.attempts.filter(
+            (attempt: RecentAttempt) => attempt.testId && attempt.subjectId
+          )
+        : []
+    );
+  } catch (error) {
+    console.error("RECENT ATTEMPTS ERROR:", error);
+    setRecentAttempts([]);
+  } finally {
+    setRecentLoading(false);
+  }
+}, []);
+
 useEffect(() => {
+  setStats({ testsTaken: 0, averageScore: 0, completed: 0, questionsToday: 0 });
   fetchDashboardStats();
-}, [fetchDashboardStats]);
+}, [fetchDashboardStats, user?.id]);
+
+useEffect(() => {
+  fetchFeaturedTest();
+}, [fetchFeaturedTest]);
+
+useEffect(() => {
+  setRecentAttempts([]);
+  fetchRecentAttempts();
+}, [fetchRecentAttempts, user?.id]);
   // =====================================================
   // FETCH EXAMS
   // =====================================================
@@ -137,7 +265,7 @@ useEffect(() => {
         console.log("=================================");
         console.log("FETCHING EXAMS...");
         console.log(
-          "API: http://10.0.2.2:6001/api/v1/exams"
+          `API: ${API_BASE_URL}/api/v1/exams`
         );
 
         const data = await getExams();
@@ -310,6 +438,24 @@ useEffect(() => {
   navigation.navigate("AllExams");
 };
 
+  const openFeaturedTest = () => {
+    if (!featuredTest) return;
+    navigation.navigate("TestInstructions", {
+      testId: featuredTest.test._id,
+      subjectId: featuredTest.series.subjectId._id,
+    });
+  };
+
+  const openAttemptAnalysis = (attempt: RecentAttempt) => {
+    navigation.navigate("Analysis", {
+      testId: attempt.testId._id,
+      subjectId: attempt.subjectId._id,
+      score: Number(attempt.accuracy) || 0,
+      total: Number(attempt.totalQuestions) || 0,
+      attemptId: attempt._id,
+    });
+  };
+
   // =====================================================
   // EXAM CARD
   // =====================================================
@@ -359,6 +505,11 @@ useEffect(() => {
     );
   };
 
+  const dailyGoalProgress = Math.min(
+    100,
+    (stats.questionsToday / DAILY_QUESTION_GOAL) * 100
+  );
+
   // =====================================================
   // UI
   // =====================================================
@@ -379,9 +530,14 @@ useEffect(() => {
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={() =>
-              fetchExams(true)
-            }
+            onRefresh={async () => {
+              await Promise.all([
+                fetchExams(true),
+                fetchDashboardStats(),
+                fetchFeaturedTest(),
+                fetchRecentAttempts(),
+              ]);
+            }}
           />
         }
       >
@@ -508,7 +664,7 @@ useEffect(() => {
             <Text
               style={styles.statNumber}
             >
-              5
+              {statsLoading ? "..." : stats.completed}
             </Text>
 
             <Text
@@ -698,106 +854,66 @@ useEffect(() => {
             FEATURED TEST
         ================================================= */}
 
-        <View
-          style={styles.sectionHeader}
-        >
-          <Text
-            style={styles.sectionTitle}
-          >
-            Featured Test
-          </Text>
-
-          <TouchableOpacity>
-            <Text
-              style={styles.seeAll}
-            >
-              See All
-            </Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Latest Test</Text>
+          <TouchableOpacity onPress={handleSeeAllExams}>
+            <Text style={styles.seeAll}>See All</Text>
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-          activeOpacity={0.9}
-          style={styles.featuredCard}
-        >
-          <View
-            style={styles.featuredTop}
-          >
-            <View
-              style={
-                styles.featuredBadge
-              }
-            >
-              <Text
-                style={
-                  styles.featuredBadgeText
-                }
-              >
-                🔥 TRENDING
+        {featuredLoading ? (
+          <View style={styles.featuredCard}>
+            <ActivityIndicator color="#FFFFFF" />
+          </View>
+        ) : featuredTest ? (
+          <View style={styles.featuredCard}>
+            <View style={styles.featuredTop}>
+              <View style={styles.featuredBadge}>
+                <Text style={styles.featuredBadgeText}>
+                  {featuredTest.series.type || "TEST"}
+                </Text>
+              </View>
+              <Text style={styles.testLevel}>
+                {featuredTest.series.subjectId.name}
               </Text>
             </View>
 
-            <Text
-              style={styles.testLevel}
-            >
-              Moderate
-            </Text>
-          </View>
-
-          <Text
-            style={styles.featuredTitle}
-          >
-            GATE CSE Full Mock Test
-          </Text>
-
-          <Text
-            style={
-              styles.featuredDescription
-            }
-          >
-            Practice with a complete
-            GATE-style mock test and
-            improve your preparation.
-          </Text>
-
-          <View
-            style={styles.testInfoRow}
-          >
-            <Text
-              style={styles.testInfo}
-            >
-              📝 65 Questions
+            <Text style={styles.featuredTitle}>
+              {featuredTest.test.title}
             </Text>
 
-            <Text
-              style={styles.testInfo}
-            >
-              ⏱ 180 Minutes
-            </Text>
-          </View>
-
-          <View
-            style={styles.featuredBottom}
-          >
-            <Text
-              style={styles.attemptText}
-            >
-              2.4K+ students attempted
+            <Text style={styles.featuredDescription}>
+              {featuredTest.series.description || featuredTest.series.title}
             </Text>
 
-            <TouchableOpacity
-              style={styles.startButton}
-            >
-              <Text
-                style={
-                  styles.startButtonText
-                }
-              >
-                Start Test →
+            <View style={styles.testInfoRow}>
+              <Text style={styles.testInfo}>
+                📝 {featuredTest.test.totalQuestions ?? 0} Questions
               </Text>
-            </TouchableOpacity>
+              <Text style={styles.testInfo}>
+                ⏱ {featuredTest.test.durationMinutes ?? 0} Minutes
+              </Text>
+            </View>
+
+            <View style={styles.featuredBottom}>
+              <Text style={styles.attemptText}>
+                {featuredTest.series.title}
+              </Text>
+              <TouchableOpacity
+                style={styles.startButton}
+                onPress={openFeaturedTest}
+              >
+                <Text style={styles.startButtonText}>Start Test →</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </TouchableOpacity>
+        ) : (
+          <View style={styles.emptyHomeCard}>
+            <Text style={styles.emptyHomeText}>
+              No active tests are available right now.
+            </Text>
+          </View>
+        )}
 
         {/* =================================================
             QUICK ACCESS
@@ -817,6 +933,7 @@ useEffect(() => {
         >
           <TouchableOpacity
             style={styles.quickCard}
+            onPress={handleSeeAllExams}
           >
             <View
               style={styles.quickIcon}
@@ -835,7 +952,7 @@ useEffect(() => {
                 styles.quickCardTitle
               }
             >
-              Test Series
+              Browse Tests
             </Text>
 
             <Text
@@ -843,12 +960,18 @@ useEffect(() => {
                 styles.quickCardSubtitle
               }
             >
-              Practice tests
+              Choose an exam
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.quickCard}
+            disabled={recentAttempts.length === 0}
+            onPress={() => {
+              if (recentAttempts[0]) {
+                openAttemptAnalysis(recentAttempts[0]);
+              }
+            }}
           >
             <View
               style={styles.quickIcon}
@@ -875,222 +998,80 @@ useEffect(() => {
                 styles.quickCardSubtitle
               }
             >
-              Track performance
+              {recentAttempts.length > 0 ? "Open latest result" : "No results yet"}
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.quickCard}
-          >
-            <View
-              style={styles.quickIcon}
-            >
-              <Text
-                style={
-                  styles.quickEmoji
-                }
-              >
-                ⏱️
-              </Text>
-            </View>
-
-            <Text
-              style={
-                styles.quickCardTitle
-              }
-            >
-              Practice
-            </Text>
-
-            <Text
-              style={
-                styles.quickCardSubtitle
-              }
-            >
-              Quick questions
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.quickCard}
-          >
-            <View
-              style={styles.quickIcon}
-            >
-              <Text
-                style={
-                  styles.quickEmoji
-                }
-              >
-                ⭐
-              </Text>
-            </View>
-
-            <Text
-              style={
-                styles.quickCardTitle
-              }
-            >
-              Bookmarks
-            </Text>
-
-            <Text
-              style={
-                styles.quickCardSubtitle
-              }
-            >
-              Saved questions
-            </Text>
-          </TouchableOpacity>
         </View>
 
         {/* =================================================
             RECENT TESTS
         ================================================= */}
 
-        <View
-          style={styles.sectionHeader}
-        >
-          <Text
-            style={styles.sectionTitle}
-          >
-            Recent Tests
-          </Text>
-
-          <TouchableOpacity>
-            <Text
-              style={styles.seeAll}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Recent Tests</Text>
+          {recentAttempts[0] && (
+            <TouchableOpacity
+              onPress={() => openAttemptAnalysis(recentAttempts[0])}
             >
-              View All
-            </Text>
-          </TouchableOpacity>
+              <Text style={styles.seeAll}>Latest Result</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
-        <View
-          style={styles.recentCard}
-        >
-          <View
-            style={styles.recentIcon}
-          >
-            <Text
-              style={styles.recentEmoji}
-            >
-              🧠
+        {recentLoading ? (
+          <View style={styles.emptyHomeCard}>
+            <ActivityIndicator color="#4F46E5" />
+          </View>
+        ) : recentAttempts.length === 0 ? (
+          <View style={styles.emptyHomeCard}>
+            <Text style={styles.emptyHomeText}>
+              You have not completed a test yet.
             </Text>
           </View>
+        ) : (
+          recentAttempts.map((attempt) => {
+            const accuracy = Math.max(
+              0,
+              Math.min(100, Number(attempt.accuracy) || 0)
+            );
 
-          <View
-            style={styles.recentContent}
-          >
-            <Text
-              style={styles.recentTitle}
-            >
-              Data Structures Mock Test
-            </Text>
+            return (
+              <TouchableOpacity
+                key={attempt._id}
+                style={styles.recentCard}
+                activeOpacity={0.85}
+                onPress={() => openAttemptAnalysis(attempt)}
+              >
+                <View style={styles.recentIcon}>
+                  <Text style={styles.recentEmoji}>📝</Text>
+                </View>
 
-            <Text
-              style={styles.recentSubtitle}
-            >
-              25 Questions • 30 Minutes
-            </Text>
+                <View style={styles.recentContent}>
+                  <Text style={styles.recentTitle} numberOfLines={1}>
+                    {attempt.testId.title}
+                  </Text>
+                  <Text style={styles.recentSubtitle} numberOfLines={1}>
+                    {attempt.subjectId.name} · {attempt.totalQuestions} questions
+                  </Text>
+                  <View style={styles.progressBackground}>
+                    <View
+                      style={[
+                        styles.progressFill,
+                        { width: `${accuracy}%` },
+                      ]}
+                    />
+                  </View>
+                </View>
 
-            <View
-              style={
-                styles.progressBackground
-              }
-            >
-              <View
-                style={[
-                  styles.progressFill,
-                  {
-                    width: "72%",
-                  },
-                ]}
-              />
-            </View>
-          </View>
-
-          <View
-            style={
-              styles.scoreContainer
-            }
-          >
-            <Text
-              style={styles.score}
-            >
-              72%
-            </Text>
-
-            <Text
-              style={styles.scoreLabel}
-            >
-              Score
-            </Text>
-          </View>
-        </View>
-
-        <View
-          style={styles.recentCard}
-        >
-          <View
-            style={styles.recentIcon}
-          >
-            <Text
-              style={styles.recentEmoji}
-            >
-              💻
-            </Text>
-          </View>
-
-          <View
-            style={styles.recentContent}
-          >
-            <Text
-              style={styles.recentTitle}
-            >
-              Operating System Test
-            </Text>
-
-            <Text
-              style={styles.recentSubtitle}
-            >
-              30 Questions • 40 Minutes
-            </Text>
-
-            <View
-              style={
-                styles.progressBackground
-              }
-            >
-              <View
-                style={[
-                  styles.progressFill,
-                  {
-                    width: "90%",
-                  },
-                ]}
-              />
-            </View>
-          </View>
-
-          <View
-            style={
-              styles.scoreContainer
-            }
-          >
-            <Text
-              style={styles.score}
-            >
-              84%
-            </Text>
-
-            <Text
-              style={styles.scoreLabel}
-            >
-              Score
-            </Text>
-          </View>
-        </View>
+                <View style={styles.scoreContainer}>
+                  <Text style={styles.score}>{Math.round(accuracy)}%</Text>
+                  <Text style={styles.scoreLabel}>Accuracy</Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })
+        )}
 
         {/* =================================================
             DAILY GOAL
@@ -1123,7 +1104,7 @@ useEffect(() => {
                 styles.motivationText
               }
             >
-              Complete 20 questions today
+              Attempt {DAILY_QUESTION_GOAL} questions today
             </Text>
 
             <View
@@ -1132,16 +1113,19 @@ useEffect(() => {
               }
             >
               <View
-                style={
-                  styles.goalProgress
-                }
+                style={[
+                  styles.goalProgress,
+                  { width: `${dailyGoalProgress}%` },
+                ]}
               />
             </View>
 
             <Text
               style={styles.goalText}
             >
-            {statsLoading ? "..." : stats.testsTaken}
+              {statsLoading
+                ? "Loading today's progress..."
+                : `${stats.questionsToday} / ${DAILY_QUESTION_GOAL} questions attempted today`}
             </Text>
           </View>
         </View>
@@ -1613,6 +1597,21 @@ const styles = StyleSheet.create({
 
   // RECENT
 
+  emptyHomeCard: {
+    backgroundColor: "#FFFFFF",
+    marginHorizontal: 20,
+    marginBottom: 12,
+    borderRadius: 17,
+    padding: 18,
+    alignItems: "center",
+  },
+
+  emptyHomeText: {
+    color: "#6B7280",
+    fontSize: 12,
+    textAlign: "center",
+  },
+
   recentCard: {
     backgroundColor: "#FFFFFF",
     marginHorizontal: 20,
@@ -1735,7 +1734,6 @@ const styles = StyleSheet.create({
   },
 
   goalProgress: {
-    width: "60%",
     height: "100%",
     backgroundColor: "#4F46E5",
     borderRadius: 6,

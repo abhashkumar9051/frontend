@@ -8,6 +8,7 @@ import React, {
 
 import {
   ActivityIndicator,
+  Alert,
   RefreshControl,
   SafeAreaView,
   ScrollView,
@@ -25,9 +26,10 @@ import type { AppStackParamList } from "../../navigation/AppNavigator";
 import {
   getExamById,
   Exam,
+  ContentSection,
   Subject,
-  TestSeries,
 } from "../../services/examService";
+import { API_BASE_URL } from "../../config/api";
 
 type Props = NativeStackScreenProps<
   AppStackParamList,
@@ -49,7 +51,7 @@ const ExamDetailsScreen = ({
   const fetchQuestionCount = async () => {
     try {
       const response = await fetch(
-        `http://10.0.2.2:6001/api/v1/exams/${examId}/question-count`
+        `${API_BASE_URL}/api/v1/exams/${examId}/question-count`
       );
 
       const data = await response.json();
@@ -80,8 +82,15 @@ const ExamDetailsScreen = ({
   const [subjects, setSubjects] =
     useState<Subject[]>([]);
 
-  const [series, setSeries] =
-    useState<TestSeries[]>([]);
+  const [examSections, setExamSections] =
+    useState<ContentSection[]>([]);
+
+  const [testSeries, setTestSeries] = useState<
+    Awaited<ReturnType<typeof getExamById>>["series"]
+  >([]);
+
+  const [sectionTests, setSectionTests] =
+    useState<Record<string, any[]>>({});
 
   const [loading, setLoading] =
     useState(true);
@@ -92,13 +101,7 @@ const ExamDetailsScreen = ({
   const [error, setError] =
     useState("");
 
-  const [tab, setTab] =
-    useState<
-      "overview" |
-      "subjects" |
-      "tests" |
-      "pyq"
-    >("overview");
+  const [tab, setTab] = useState("overview");
 
   // ==========================================
   // FETCH EXAM DETAILS
@@ -153,6 +156,7 @@ const ExamDetailsScreen = ({
         // =====================================
 
         setExam(data.exam);
+        setTestSeries(data.series || []);
 
         // =====================================
         // SUBJECTS
@@ -169,16 +173,72 @@ const ExamDetailsScreen = ({
           sortedSubjects
         );
 
+        const examLevelSections = (data.sections || [])
+          .filter((section) => {
+            const sectionSubjectId =
+              section.subjectId && typeof section.subjectId === "object"
+                ? section.subjectId._id
+                : section.subjectId;
+            const placement = section.placement || "exam_tab";
+            return !sectionSubjectId && placement === "exam_tab";
+          })
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        setExamSections(examLevelSections);
+
+        const examSectionIds = new Set(examLevelSections.map((section) => section._id));
+        const sectionSeries = (data.series || []).filter((item) => {
+          const sectionId =
+            item.sectionId && typeof item.sectionId === "object"
+              ? item.sectionId._id
+              : item.sectionId;
+          if (sectionId) return examSectionIds.has(sectionId);
+
+          const itemSubjectId =
+            item.subjectId && typeof item.subjectId === "object"
+              ? item.subjectId._id
+              : item.subjectId;
+          return examLevelSections.length === 1 && !itemSubjectId;
+        });
+
+        const sectionTestGroups = await Promise.all(sectionSeries.map(async (item) => {
+          const linkedSectionId =
+            item.sectionId && typeof item.sectionId === "object"
+              ? item.sectionId._id
+              : item.sectionId;
+          const sectionId =
+            linkedSectionId ||
+            (examLevelSections.length === 1
+              ? examLevelSections[0]._id
+              : null);
+          try {
+            const response = await fetch(`${API_BASE_URL}/api/v1/series/${item._id}/tests`);
+            const result = await response.json();
+            if (!response.ok) return [sectionId, []] as const;
+            const subjectId =
+              item.subjectId && typeof item.subjectId === "object"
+                ? item.subjectId._id
+                : item.subjectId || sortedSubjects[0]?._id;
+            return [sectionId, (Array.isArray(result.tests) ? result.tests : []).map(
+              (test: any) => ({ ...test, subjectId })
+            )] as const;
+          } catch {
+            return [sectionId, []] as const;
+          }
+        }));
+
+        const nextSectionTests: Record<string, any[]> = {};
+        for (const [sectionId, tests] of sectionTestGroups) {
+          if (!sectionId) continue;
+          nextSectionTests[sectionId] = [
+            ...(nextSectionTests[sectionId] || []),
+            ...tests,
+          ];
+        }
+        setSectionTests(nextSectionTests);
+
         // =====================================
         // TEST SERIES
         // =====================================
-
-        const activeSeries =
-          [...(data.series || [])];
-
-        setSeries(
-          activeSeries
-        );
 
       } catch (err: any) {
         console.log(
@@ -229,60 +289,6 @@ const ExamDetailsScreen = ({
         subjectId,
         examId,
       }
-    );
-  };
-
-  // ==========================================
-  // OPEN TEST SERIES
-  // ==========================================
-
-  const openTestSeries = (
-    item: TestSeries
-  ) => {
-    const subjectId =
-      typeof item.subjectId === "object"
-        ? item.subjectId._id
-        : item.subjectId;
-
-    navigation.navigate(
-      "TestSeriesDetail",
-      {
-        subjectId,
-        mode: "series",
-      }
-    );
-  };
-
-  // ==========================================
-  // OPEN FIRST SERIES
-  // ==========================================
-
-  // ==========================================
-  // GET SUBJECT NAME
-  // ==========================================
-
-  const getSubjectName = (
-    item: TestSeries
-  ) => {
-    if (
-      typeof item.subjectId ===
-      "object"
-    ) {
-      return (
-        item.subjectId.name ||
-        "All Subjects"
-      );
-    }
-
-    const subject =
-      subjects.find(
-        (subject) =>
-          subject._id === item.subjectId
-      );
-
-    return (
-      subject?.name ||
-      "All Subjects"
     );
   };
 
@@ -383,6 +389,54 @@ const ExamDetailsScreen = ({
   const examDescription =
     exam.description ||
     `Prepare for ${examTitle} with structured tests, previous year questions and detailed performance analysis.`;
+
+  const totalTests = subjects.reduce(
+    (total, subject) => total + (Number(subject.tests) || 0),
+    0
+  );
+
+  const pyqSeries = testSeries.filter(
+    (item) => item.type === "pyq"
+  );
+  const pyqSection = examSections.find(
+    (section) => section.title.trim().toLowerCase() === "pyq"
+  );
+  const pyqTabKey = pyqSection?._id ?? "pyq";
+
+  const openPyqSeries = async (item: (typeof pyqSeries)[number]) => {
+    const seriesSubjectId =
+      item.subjectId && typeof item.subjectId === "object"
+        ? item.subjectId._id
+        : item.subjectId;
+    const fallbackSubjectId = seriesSubjectId || subjects[0]?._id;
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/v1/series/${item._id}/tests`
+      );
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Unable to load this PYQ test.");
+      }
+
+      const firstTest = Array.isArray(data.tests) ? data.tests[0] : null;
+      if (!firstTest?._id) {
+        Alert.alert("No test available", "GATE 2017 mein abhi koi active test nahi hai.");
+        return;
+      }
+
+      navigation.navigate("TestInstructions", {
+        testId: firstTest._id,
+        subjectId: fallbackSubjectId,
+      });
+    } catch (err: any) {
+      Alert.alert(
+        "Unable to open test",
+        err?.message || "Please try again."
+      );
+    }
+  };
 
   // ==========================================
   // LOGO
@@ -558,8 +612,8 @@ const ExamDetailsScreen = ({
             <Divider />
 
             <Stat
-              value={`${series.length}`}
-              label="Test Series"
+              value={`${totalTests}`}
+              label="Tests"
             />
 
             <Divider />
@@ -576,39 +630,26 @@ const ExamDetailsScreen = ({
         {/* TABS */}
         {/* ================================= */}
 
-        <View
-          style={styles.tabs}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabs}
         >
           {[
-            [
-              "overview",
-              "Overview",
-            ],
-            [
-              "subjects",
-              "Subjects",
-            ],
-            [
-              "tests",
-              "Test Series",
-            ],
-            [
-              "pyq",
-              "PYQs",
-            ],
+            { key: "overview", label: "Overview" },
+            { key: "subjects", label: "Subjects" },
+            ...(pyqSeries.length > 0 && !pyqSection
+              ? [{ key: "pyq", label: "PYQ" }]
+              : []),
+            ...examSections.map((section) => ({
+              key: section._id,
+              label: section.title,
+            })),
           ].map(
-            ([key, label]) => (
+            ({ key, label }) => (
               <TouchableOpacity
                 key={key}
-                onPress={() =>
-                  setTab(
-                    key as
-                      | "overview"
-                      | "subjects"
-                      | "tests"
-                      | "pyq"
-                  )
-                }
+                onPress={() => setTab(key)}
                 style={[
                   styles.tab,
                   tab === key &&
@@ -627,7 +668,7 @@ const ExamDetailsScreen = ({
               </TouchableOpacity>
             )
           )}
-        </View>
+        </ScrollView>
 
         {/* ================================= */}
         {/* OVERVIEW */}
@@ -771,67 +812,6 @@ const ExamDetailsScreen = ({
               )}
             </Section>
 
-            {/* POPULAR SERIES */}
-
-            <Section
-              title="Test Series"
-              subtitle="Start your preparation"
-            >
-              {series.length ===
-              0 ? (
-                <EmptySeries />
-              ) : (
-                <>
-                  {series
-                    .slice(0, 2)
-                    .map(
-                      (
-                        item
-                      ) => (
-                        <SeriesCard
-                          key={
-                            item._id
-                          }
-                          item={
-                            item
-                          }
-                          subjectName={getSubjectName(
-                            item
-                          )}
-                          onPress={() =>
-                            openTestSeries(
-                              item
-                            )
-                          }
-                        />
-                      )
-                    )}
-
-                  {series.length >
-                    2 && (
-                    <TouchableOpacity
-                      style={
-                        styles.viewAllBtn
-                      }
-                      onPress={() =>
-                        setTab(
-                          "tests"
-                        )
-                      }
-                    >
-                      <Text
-                        style={
-                          styles.viewAllText
-                        }
-                      >
-                        View All Test Series →
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                </>
-              )}
-            </Section>
-
           </>
         )}
 
@@ -842,218 +822,115 @@ const ExamDetailsScreen = ({
         {tab === "subjects" && (
           <Section
             title={`${examTitle} Subjects`}
-            subtitle="Choose a subject to see its complete test ecosystem."
+            subtitle="Choose a subject to see its tests and sections."
           >
-            {subjects.length ===
-            0 ? (
+            {subjects.length === 0 ? (
               <EmptySubjects />
             ) : (
-              subjects.map(
-                (
-                  subject,
-                  index
-                ) => (
-                  <SubjectRow
-                    key={
-                      subject._id
-                    }
-                    subject={
-                      subject
-                    }
-                    index={
-                      index
-                    }
-                    onPress={() =>
-                      openSubject(
-                        subject._id
-                      )
-                    }
-                  />
-                )
-              )
+              subjects.map((subject, index) => (
+                <SubjectRow
+                  key={subject._id}
+                  subject={subject}
+                  index={index}
+                  onPress={() => openSubject(subject._id)}
+                />
+              ))
             )}
           </Section>
         )}
 
-        {/* ================================= */}
-        {/* TEST SERIES */}
-        {/* ================================= */}
-
-        {tab === "tests" && (
+        {tab === pyqTabKey && (pyqSeries.length > 0 || Boolean(pyqSection)) && (
           <Section
-            title="Test Series"
-            subtitle="Complete, topic-wise and subject-wise preparation."
+            title="PYQ"
+            subtitle="Previous year question tests"
           >
-
-            {series.length ===
-            0 ? (
-              <EmptySeries />
-            ) : (
-              series.map(
-                (
-                  item
-                ) => (
-                  <SeriesCard
-                    key={
-                      item._id
-                    }
-                    item={
-                      item
-                    }
-                    subjectName={getSubjectName(
-                      item
-                    )}
-                    onPress={() =>
-                      openTestSeries(
-                        item
-                      )
-                    }
-                  />
-                )
-              )
-            )}
-
-          </Section>
-        )}
-
-        {/* ================================= */}
-        {/* PYQ */}
-        {/* ================================= */}
-
-        {tab === "pyq" && (
-          <Section
-            title="Previous Year Questions"
-            subtitle="Practice previous year questions by subject and year."
-          >
-
-            {subjects.length ===
-            0 ? (
-              <EmptySubjects />
-            ) : (
-              <>
+            {pyqSeries.length > 0 ? pyqSeries.map((item) => {
+              const itemSubject =
+                item.subjectId && typeof item.subjectId === "object"
+                  ? item.subjectId.name
+                  : subjects.find((subject) => subject._id === item.subjectId)?.name;
+              return (
                 <TouchableOpacity
-                  style={
-                    styles.pyqCard
-                  }
-                  onPress={() =>
-                    openSubject(
-                      subjects[0]._id
-                    )
-                  }
+                  key={item._id}
+                  style={styles.subjectRow}
+                  activeOpacity={0.8}
+                  onPress={() => openPyqSeries(item)}
                 >
-                  <Text
-                    style={
-                      styles.pyqIcon
-                    }
-                  >
-                    🏆
-                  </Text>
-
-                  <View
-                    style={{
-                      flex: 1,
-                    }}
-                  >
-                    <Text
-                      style={
-                        styles.seriesTitle
-                      }
-                    >
-                      PYQ Collection
-                    </Text>
-
-                    <Text
-                      style={
-                        styles.subjectMeta
-                      }
-                    >
-                      Previous Year
-                      Questions •
-                      Solutions
-                    </Text>
+                  <View style={styles.subjectIcon}>
+                    <Text style={styles.subjectEmoji}>📝</Text>
                   </View>
-
-                  <Text
-                    style={
-                      styles.arrow
-                    }
-                  >
-                    ›
-                  </Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.subjectName}>{item.title || item.name || "Previous year questions"}</Text>
+                    <Text style={styles.subjectMeta}>{itemSubject || "All subjects"}</Text>
+                  </View>
+                  <Text style={styles.arrow}>›</Text>
                 </TouchableOpacity>
-
-                {subjects.map(
-                  (
-                    subject
-                  ) => (
-                    <TouchableOpacity
-                      key={
-                        subject._id
-                      }
-                      style={
-                        styles.pyqRow
-                      }
-                      onPress={() =>
-                        openSubject(
-                          subject._id
-                        )
-                      }
-                    >
-                      <Text
-                        style={
-                          styles.pyqShortName
-                        }
-                      >
-                        {subject.shortName ||
-                          subject.name
-                            .slice(
-                              0,
-                              4
-                            )
-                            .toUpperCase()}
-                      </Text>
-
-                      <View
-                        style={{
-                          flex: 1,
-                        }}
-                      >
-                        <Text
-                          style={
-                            styles.seriesTitle
-                          }
-                        >
-                          {
-                            subject.name
-                          }{" "}
-                          PYQs
-                        </Text>
-
-                        <Text
-                          style={
-                            styles.subjectMeta
-                          }
-                        >
-                          Previous year
-                          questions
-                        </Text>
-                      </View>
-
-                      <Text
-                        style={
-                          styles.arrow
-                        }
-                      >
-                        ›
-                      </Text>
-                    </TouchableOpacity>
-                  )
-                )}
-              </>
-            )}
-
+              );
+            }) : (sectionTests[pyqSection?._id ?? ""] || []).map((test) => (
+              <TouchableOpacity
+                key={test._id}
+                style={styles.subjectRow}
+                activeOpacity={0.8}
+                onPress={() => navigation.navigate("TestInstructions", {
+                  testId: test._id,
+                  subjectId: test.subjectId || subjects[0]?._id,
+                })}
+              >
+                <View style={styles.subjectIcon}>
+                  <Text style={styles.subjectEmoji}>📝</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.subjectName}>{test.title || test.name || "PYQ test"}</Text>
+                  <Text style={styles.subjectMeta}>
+                    {test.totalQuestions ?? test.questions ?? 0} questions
+                    {test.durationMinutes || test.duration
+                      ? ` • ${test.durationMinutes ?? test.duration} min`
+                      : ""}
+                  </Text>
+                </View>
+                <Text style={styles.arrow}>›</Text>
+              </TouchableOpacity>
+            ))}
           </Section>
         )}
+
+        {examSections.map((section) =>
+          section._id !== pyqSection?._id && tab === section._id && (
+          <Section
+            key={section._id}
+            title={section.title}
+            subtitle={`Tests in ${section.title}`}
+          >
+            {(sectionTests[section._id] || []).length === 0 ? (
+              <EmptySectionTests title={section.title} />
+            ) : (sectionTests[section._id] || []).map((test) => (
+              <TouchableOpacity
+                key={test._id}
+                style={styles.subjectRow}
+                activeOpacity={0.8}
+                disabled={!test.subjectId && !subjects[0]?._id}
+                onPress={() => navigation.navigate("TestInstructions", {
+                  testId: test._id,
+                  subjectId: test.subjectId || subjects[0]?._id,
+                })}
+              >
+                <View style={styles.subjectIcon}>
+                  <Text style={styles.subjectEmoji}>📝</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.subjectName}>{test.title || test.name || "Practice test"}</Text>
+                  <Text style={styles.subjectMeta}>
+                    {test.totalQuestions ?? test.questions ?? 0} questions
+                    {test.durationMinutes || test.duration
+                      ? ` • ${test.durationMinutes ?? test.duration} min`
+                      : ""}
+                  </Text>
+                </View>
+                <Text style={styles.arrow}>›</Text>
+              </TouchableOpacity>
+            ))}
+          </Section>
+        ))}
 
         <View
           style={{
@@ -1145,98 +1022,6 @@ const SubjectRow = ({
 };
 
 // ==========================================
-// TEST SERIES CARD
-// ==========================================
-
-const SeriesCard = ({
-  item,
-  subjectName,
-  onPress,
-}: {
-  item: TestSeries;
-  subjectName: string;
-  onPress: () => void;
-}) => {
-  return (
-    <TouchableOpacity
-      style={
-        styles.largeSeries
-      }
-      onPress={onPress}
-      activeOpacity={0.85}
-    >
-      <Text
-        style={styles.ribbon}
-      >
-        TEST SERIES
-      </Text>
-
-      <Text
-        style={styles.largeTitle}
-      >
-        {item.name}
-      </Text>
-
-      <Text
-        style={styles.largeMeta}
-      >
-        {subjectName}
-        {item.type
-          ? ` • ${item.type}`
-          : ""}
-      </Text>
-
-      {item.description ? (
-        <Text
-          style={
-            styles.description
-          }
-          numberOfLines={2}
-        >
-          {item.description}
-        </Text>
-      ) : null}
-
-      {item.price !==
-        undefined && (
-        <Text
-          style={styles.price}
-        >
-          ₹{item.price}
-
-          {item.originalPrice !==
-            undefined && (
-            <Text
-              style={
-                styles.oldPrice
-              }
-            >
-              {" "}
-              ₹
-              {
-                item.originalPrice
-              }
-            </Text>
-          )}
-        </Text>
-      )}
-
-      <View
-        style={styles.fullBtn}
-      >
-        <Text
-          style={
-            styles.fullBtnText
-          }
-        >
-          View Test Series →
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
-};
-
-// ==========================================
 // EMPTY SUBJECTS
 // ==========================================
 
@@ -1274,43 +1059,15 @@ const EmptySubjects = () => {
   );
 };
 
-// ==========================================
-// EMPTY SERIES
-// ==========================================
-
-const EmptySeries = () => {
-  return (
-    <View
-      style={styles.emptyCard}
-    >
-      <Text
-        style={
-          styles.emptyIcon
-        }
-      >
-        📝
-      </Text>
-
-      <Text
-        style={
-          styles.emptyTitle
-        }
-      >
-        No Test Series Found
-      </Text>
-
-      <Text
-        style={
-          styles.emptyText
-        }
-      >
-        Test series added from the
-        admin panel will appear
-        here automatically.
-      </Text>
-    </View>
-  );
-};
+const EmptySectionTests = ({ title }: { title: string }) => (
+  <View style={styles.emptyCard}>
+    <Text style={styles.emptyIcon}>📝</Text>
+    <Text style={styles.emptyTitle}>No tests in {title}</Text>
+    <Text style={styles.emptyText}>
+      Assign a test series to this section from the admin panel.
+    </Text>
+  </View>
+);
 
 // ==========================================
 // STAT
@@ -1702,10 +1459,12 @@ const styles =
     },
 
     tab: {
-      flex: 1,
+      flex: 0,
+      minWidth: 82,
       alignItems:
         "center",
       paddingVertical: 11,
+      paddingHorizontal: 12,
       borderRadius: 10,
     },
 
@@ -2018,57 +1777,7 @@ const styles =
       fontWeight: "900",
     },
 
-    // ======================================
-    // PYQ
-    // ======================================
 
-    pyqCard: {
-      backgroundColor:
-        "#EEF2FF",
-      padding: 16,
-      borderRadius: 17,
-      flexDirection:
-        "row",
-      alignItems:
-        "center",
-      marginBottom: 12,
-    },
-
-    pyqIcon: {
-      fontSize: 28,
-      marginRight: 12,
-    },
-
-    pyqRow: {
-      backgroundColor:
-        "#fff",
-      padding: 14,
-      borderRadius: 15,
-      flexDirection:
-        "row",
-      alignItems:
-        "center",
-      marginBottom: 9,
-      elevation: 1,
-    },
-
-    pyqShortName: {
-      minWidth: 50,
-      height: 35,
-      borderRadius: 9,
-      backgroundColor:
-        "#EEF2FF",
-      color: "#4F46E5",
-      textAlign:
-        "center",
-      textAlignVertical:
-        "center",
-      fontSize: 9,
-      fontWeight: "900",
-      paddingHorizontal: 5,
-      paddingTop: 10,
-      marginRight: 10,
-    },
   });
 
 export default ExamDetailsScreen;

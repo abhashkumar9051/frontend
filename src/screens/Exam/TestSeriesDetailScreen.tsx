@@ -27,6 +27,7 @@ import {
   Subject,
   TestSeries,
 } from "../../services/examService";
+import { API_BASE_URL } from "../../config/api";
 
 type Props =
   NativeStackScreenProps<
@@ -62,8 +63,7 @@ interface Test {
 // API URL
 // ==========================================
 
-const API_URL =
-  "http://10.0.2.2:6001";
+const API_URL = API_BASE_URL;
 
 // ==========================================
 // SCREEN
@@ -151,7 +151,7 @@ const TestSeriesDetailScreen = ({
 
         if (!seriesId) {
           setError(
-            "Test Series ID is missing."
+            "Test content is unavailable."
           );
 
           setTests([]);
@@ -369,10 +369,11 @@ const TestSeriesDetailScreen = ({
     "Subject";
 
   const seriesName =
+    series?.title ||
     series?.name ||
     (pyq
       ? `${subjectName} Previous Year Questions`
-      : `${subjectName} Test Series`);
+      : subjectName);
 
   const totalQuestions =
     tests.reduce(
@@ -435,9 +436,7 @@ const TestSeriesDetailScreen = ({
               styles.headerTitle
             }
           >
-            {pyq
-              ? "Previous Year Questions"
-              : "Test Series"}
+            {pyq ? "Previous Year Questions" : seriesName}
           </Text>
 
           <Text
@@ -621,9 +620,7 @@ const TestSeriesDetailScreen = ({
                     styles.emptyText
                   }
                 >
-                  Is Test Series me
-                  abhi koi test
-                  add nahi hua hai.
+                  Is set mein abhi koi test add nahi hua hai.
                 </Text>
 
                 <TouchableOpacity

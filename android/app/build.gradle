@@ -92,7 +92,15 @@ android {
         keyAlias 'testseriesdebug'
         keyPassword '@Abhash7971'
     }
+   
+       release {
+        storeFile file('genzexam-release-key.keystore')
+        storePassword '@Abhash7971'
+        keyAlias 'genzexam'
+        keyPassword '@Abhash7971'
+    }
 }
+
     buildTypes {
         debug {
             signingConfig signingConfigs.debug

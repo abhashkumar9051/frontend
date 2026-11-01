@@ -1,6 +1,6 @@
+import { API_BASE_URL } from "../config/api";
 
-
-const API_URL = "http://10.0.2.2:6001";
+const API_URL = API_BASE_URL;
 
 // ==========================================
 // EXAM
@@ -39,6 +39,19 @@ export interface Subject {
   questions?: number;
 }
 
+export interface ContentSection {
+  _id: string;
+  examId: string;
+  subjectId:
+    | string
+    | { _id: string; name: string }
+    | null;
+  title: string;
+  placement?: "exam_tab" | "subject_tests";
+  order?: number;
+  isActive?: boolean;
+}
+
 // ==========================================
 // TEST SERIES
 // ==========================================
@@ -53,9 +66,16 @@ export interface TestSeries {
     | {
         _id: string;
         name: string;
-      };
+      }
+    | null;
 
-  name: string;
+  sectionId?:
+    | string
+    | { _id: string; title: string }
+    | null;
+
+  title: string;
+  name?: string;
   description?: string;
 
   type?: string;
@@ -74,6 +94,7 @@ export interface ExamDetails {
   exam: Exam;
   subjects: Subject[];
   series: TestSeries[];
+  sections: ContentSection[];
 }
 
 // ==========================================
@@ -122,5 +143,6 @@ export const getExamById = async (
     exam: data.exam,
     subjects: data.subjects || [],
     series: data.series || [],
+    sections: data.sections || [],
   };
 };

@@ -396,7 +396,7 @@ const ProfileScreen = ({ navigation }: Props) => {
 
 
         <Text style={styles.version}>
-          Test Series App
+          GenZExam
         </Text>
 
       </ScrollView>

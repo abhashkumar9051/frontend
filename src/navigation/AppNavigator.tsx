@@ -76,7 +76,7 @@ export type AppStackParamList = {
 
   TestInstructions: {
     testId: string;
-    subjectId: string;
+    subjectId?: string;
   };
 
   // ==========================================
@@ -85,7 +85,7 @@ export type AppStackParamList = {
 
   Test: {
     testId: string;
-    subjectId: string;
+    subjectId?: string;
   };
 
   // ==========================================
@@ -94,7 +94,7 @@ export type AppStackParamList = {
 
   Result: {
     testId: string;
-    subjectId: string;
+    subjectId?: string;
 
     score: number;
     total: number;
@@ -113,7 +113,7 @@ export type AppStackParamList = {
 
   Analysis: {
     testId: string;
-    subjectId: string;
+    subjectId?: string;
 
     score: number;
     total: number;
