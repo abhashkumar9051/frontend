@@ -6,6 +6,7 @@ import React, {
 
 import {
   ActivityIndicator,
+  Alert,
   RefreshControl,
   SafeAreaView,
   ScrollView,
@@ -14,6 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import RazorpayCheckout from "react-native-razorpay";
 
 import type {
   NativeStackScreenProps,
@@ -28,6 +30,7 @@ import {
   TestSeries,
 } from "../../services/examService";
 import { API_BASE_URL } from "../../config/api";
+import { getToken } from "../../services/authService";
 
 type Props =
   NativeStackScreenProps<
@@ -55,6 +58,7 @@ interface Test {
   isFree?: boolean;
   price?: number;
 
+  createdAt?: string;
   order?: number;
   isActive?: boolean;
 }
@@ -102,6 +106,7 @@ const TestSeriesDetailScreen = ({
 
   const [error, setError] =
     useState("");
+  const [buyingPremium, setBuyingPremium] = useState(false);
 
   // ========================================
   // FETCH SERIES + TESTS
@@ -176,10 +181,11 @@ const TestSeriesDetailScreen = ({
         // FETCH SERIES TESTS
         // ==================================
 
-        const response =
-          await fetch(
-            `${API_URL}/api/v1/series/${seriesId}/tests`
-          );
+        const token = await getToken();
+        const response = await fetch(
+          `${API_URL}/api/v1/series/${seriesId}/tests`,
+          { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+        );
 
         const data =
           await response.json();
@@ -205,9 +211,22 @@ const TestSeriesDetailScreen = ({
         // ==================================
 
         if (data.series) {
-          setSeries(
-            data.series
-          );
+          let examUnlocked = Boolean(data.series.isUnlocked);
+          if (data.series.isPremium) {
+            const accessExamId = data.series.subjectId && typeof data.series.subjectId === "object"
+              ? data.series.subjectId.examId || data.series.examId
+              : data.series.examId;
+            const token = await getToken();
+            if (token && accessExamId) {
+              const entitlementResponse = await fetch(`${API_BASE_URL}/api/v1/payment/entitlements`, {
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              const entitlementData = await entitlementResponse.json();
+              examUnlocked = examUnlocked || Boolean(entitlementResponse.ok &&
+                (entitlementData.premiumExamIds || []).includes(String(accessExamId)));
+            }
+          }
+          setSeries({ ...data.series, isUnlocked: examUnlocked });
         }
 
         // ==================================
@@ -223,9 +242,11 @@ const TestSeriesDetailScreen = ({
 
         const sortedTests =
           [...backendTests].sort(
-            (a, b) =>
-              (a.order ?? 0) -
-              (b.order ?? 0)
+            (a, b) => {
+              const orderDifference = (a.order ?? 0) - (b.order ?? 0);
+              if (orderDifference) return orderDifference;
+              return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+            }
           );
 
         setTests(
@@ -259,7 +280,7 @@ const TestSeriesDetailScreen = ({
               data.series.subjectId._id,
 
             examId:
-              data.series.examId,
+              data.series.subjectId.examId || data.series.examId,
 
             name:
               data.series.subjectId.name,
@@ -325,9 +346,76 @@ const TestSeriesDetailScreen = ({
   // OPEN TEST
   // ========================================
 
+  const buyExamPremium = async () => {
+    if (buyingPremium) return;
+    const examId = (series?.subjectId && typeof series.subjectId === "object" ? series.subjectId.examId : undefined) || series?.examId;
+    if (!examId) {
+      Alert.alert("Unable to start payment", "This test series is not linked to an exam. Please ask the administrator to check its exam assignment.");
+      return;
+    }
+
+    setBuyingPremium(true);
+    try {
+      const token = await getToken();
+      if (!token) {
+        Alert.alert("Login required", "Please log in before purchasing premium access.");
+        return;
+      }
+
+      const orderResponse = await fetch(`${API_BASE_URL}/api/v1/payment/create-order`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ examId }),
+      });
+      const orderData = await orderResponse.json();
+      if (orderResponse.status === 409) {
+        await fetchTests(false);
+        Alert.alert("Already unlocked", "Your premium access for this exam is already active.");
+        return;
+      }
+      if (!orderResponse.ok) throw new Error(orderData.message || "Could not start payment.");
+
+      const checkout = await RazorpayCheckout.open({
+        key: orderData.keyId,
+        order_id: orderData.order.id,
+        amount: orderData.order.amount,
+        currency: orderData.order.currency,
+        name: "Test Series",
+        description: `${orderData.examName || series?.title || subject?.name || "Exam"} full exam premium`,
+        theme: { color: "#4F46E5" },
+      });
+
+      const verifyResponse = await fetch(`${API_BASE_URL}/api/v1/payment/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(checkout),
+      });
+      const verifyData = await verifyResponse.json();
+      if (!verifyResponse.ok || !verifyData.unlocked) throw new Error(verifyData.message || "Payment verification failed.");
+
+      setSeries((previous) => previous ? { ...previous, isUnlocked: true } : previous);
+      await fetchTests(false);
+      Alert.alert("Payment successful", `Premium tests are unlocked until ${new Date(verifyData.validUntil).toLocaleDateString("en-IN")}.`);
+    } catch (error: any) {
+      const message = error?.description || error?.message || "Payment could not be completed.";
+      if (error?.code === 0 || /cancel/i.test(message)) {
+        Alert.alert("Payment cancelled", "No payment was taken. You can try again.");
+      } else {
+        console.warn("Premium purchase from test list failed:", error);
+        Alert.alert("Payment failed", message);
+      }
+    } finally {
+      setBuyingPremium(false);
+    }
+  };
+
   const openTest = (
     test: Test
   ) => {
+    if (series?.isPremium && !series.isUnlocked && !test.isFree) {
+      buyExamPremium();
+      return;
+    }
     navigation.navigate(
       "TestInstructions",
       {
@@ -756,7 +844,9 @@ const TestSeriesDetailScreen = ({
                       styles.testRight
                     }
                   >
-                    {test.isFree ? (
+                    {series?.isPremium && series.isUnlocked ? (
+                      <Text style={styles.unlocked}>UNLOCKED</Text>
+                    ) : test.isFree || !series?.isPremium ? (
                       <Text
                         style={
                           styles.free
@@ -792,25 +882,20 @@ const TestSeriesDetailScreen = ({
         {/* BOTTOM CARD */}
         {/* ================================= */}
 
-        {!pyq &&
-          tests.length >
-            0 && (
-            <View
-              style={
-                styles.bottomCard
-              }
+        {!pyq && series?.isPremium && tests.length > 0 && (
+            <TouchableOpacity
+              disabled={Boolean(series.isUnlocked || buyingPremium)}
+              onPress={buyExamPremium}
+              activeOpacity={0.85}
+              style={[styles.bottomCard, series.isUnlocked && styles.bottomCardUnlocked]}
             >
               <View
                 style={{
                   flex: 1,
                 }}
               >
-                <Text
-                  style={
-                    styles.bottomTitle
-                  }
-                >
-                  Get Complete Access
+                <Text style={styles.bottomTitle}>
+                  {series.isUnlocked ? "Premium access active" : "Unlock this mock and all exam premium tests"}
                 </Text>
 
                 <Text
@@ -818,20 +903,16 @@ const TestSeriesDetailScreen = ({
                     styles.bottomText
                   }
                 >
-                  Unlock all tests
-                  with detailed
-                  solutions.
+                  {series.isUnlocked
+                    ? "Your exam package is active for the current validity period."
+                    : "Tap here to pay securely and unlock every premium mock in this exam."}
                 </Text>
               </View>
 
-              <Text
-                style={
-                  styles.bottomPrice
-                }
-              >
-                ₹499
-              </Text>
-            </View>
+              {buyingPremium ? <ActivityIndicator color="#FFFFFF" /> : (
+                <Text style={styles.bottomPrice}>{series.isUnlocked ? "✓" : "UNLOCK"}</Text>
+              )}
+            </TouchableOpacity>
           )}
       </ScrollView>
     </SafeAreaView>
@@ -1068,6 +1149,13 @@ const styles =
       marginBottom: 5,
     },
 
+    unlocked: {
+      color: "#15803D",
+      fontSize: 8,
+      fontWeight: "900",
+      marginBottom: 5,
+    },
+
     lock: {
       fontSize: 13,
       marginBottom: 4,
@@ -1149,6 +1237,10 @@ const styles =
         "#312E81",
       flexDirection: "row",
       alignItems: "center",
+    },
+
+    bottomCardUnlocked: {
+      backgroundColor: "#166534",
     },
 
     bottomTitle: {

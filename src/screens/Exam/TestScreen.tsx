@@ -1899,10 +1899,11 @@ const TestScreen = ({
           "================================"
         );
 
-        const response =
-          await fetch(
-            `${API_URL}/api/v1/tests/${testId}/questions`
-          );
+        const token = await AsyncStorage.getItem("token");
+        const response = await fetch(
+          `${API_URL}/api/v1/tests/${testId}/questions`,
+          { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+        );
 
         const data =
           await response.json();

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useState } from "react";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import {
   SafeAreaView,
@@ -14,6 +14,7 @@ import {
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import { useDispatch, useSelector } from "react-redux";
+import { useFocusEffect } from "@react-navigation/native";
 
 import type { RootState } from "../../redux/store";
 
@@ -26,6 +27,17 @@ import {
 } from "../../services/authService";
 
 import type { AppStackParamList } from "../../navigation/AppNavigator";
+import { API_BASE_URL } from "../../config/api";
+import { getToken } from "../../services/authService";
+
+type PremiumExam = {
+  examId: string;
+  examName: string;
+  examShortName?: string;
+  purchasedAt: string;
+  validUntil: string;
+  isActive: boolean;
+};
 
 
 type Props = NativeStackScreenProps<
@@ -41,6 +53,33 @@ const ProfileScreen = ({ navigation }: Props) => {
   const { user } = useSelector(
     (state: RootState) => state.auth
   );
+
+  const [premiumExams, setPremiumExams] = useState<PremiumExam[]>([]);
+  const [premiumLoading, setPremiumLoading] = useState(true);
+
+  useFocusEffect(useCallback(() => {
+    let mounted = true;
+    const loadPremiumValidity = async () => {
+      setPremiumLoading(true);
+      try {
+        const token = await getToken();
+        if (!token) return;
+        const response = await fetch(`${API_BASE_URL}/api/v1/payment/entitlements`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await response.json();
+        if (mounted && response.ok) {
+          setPremiumExams(Array.isArray(data.premiumExams) ? data.premiumExams : []);
+        }
+      } catch (error) {
+        console.log("Premium validity lookup failed:", error);
+      } finally {
+        if (mounted) setPremiumLoading(false);
+      }
+    };
+    loadPremiumValidity();
+    return () => { mounted = false; };
+  }, []));
 
 
  const handleLogout = () => {
@@ -293,6 +332,31 @@ const ProfileScreen = ({ navigation }: Props) => {
         </View>
 
 
+        <Text style={styles.sectionTitle}>Premium Validity</Text>
+        <View style={styles.sectionCard}>
+          {premiumLoading ? (
+            <Text style={styles.premiumEmpty}>Loading your exam memberships…</Text>
+          ) : premiumExams.length === 0 ? (
+            <Text style={styles.premiumEmpty}>You have no premium exam packages yet.</Text>
+          ) : premiumExams.map((item, index) => (
+            <React.Fragment key={item.examId}>
+              {index > 0 && <View style={styles.divider} />}
+              <View style={styles.premiumRow}>
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>{item.examName || item.examShortName || "Exam"}</Text>
+                  <Text style={styles.premiumDate}>
+                    {item.isActive ? "Valid until " : "Expired on "}
+                    {new Date(item.validUntil).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
+                  </Text>
+                </View>
+                <Text style={item.isActive ? styles.premiumActive : styles.premiumExpired}>
+                  {item.isActive ? "ACTIVE" : "EXPIRED"}
+                </Text>
+              </View>
+            </React.Fragment>
+          ))}
+        </View>
+
         {/* EXAM SECTION */}
 
         <Text style={styles.sectionTitle}>
@@ -528,6 +592,47 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingHorizontal: 16,
     marginBottom: 22,
+  },
+
+  premiumRow: {
+    minHeight: 68,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+  },
+
+  premiumDate: {
+    color: "#4B5563",
+    fontSize: 13,
+    marginTop: 4,
+  },
+
+  premiumActive: {
+    color: "#15803D",
+    fontSize: 11,
+    fontWeight: "800",
+    backgroundColor: "#DCFCE7",
+    overflow: "hidden",
+    borderRadius: 12,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+  },
+
+  premiumExpired: {
+    color: "#B91C1C",
+    fontSize: 11,
+    fontWeight: "800",
+    backgroundColor: "#FEE2E2",
+    overflow: "hidden",
+    borderRadius: 12,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+  },
+
+  premiumEmpty: {
+    color: "#6B7280",
+    fontSize: 14,
+    paddingVertical: 18,
   },
 
 

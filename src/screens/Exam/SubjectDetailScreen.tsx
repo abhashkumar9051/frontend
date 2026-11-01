@@ -40,6 +40,7 @@ type SubjectTest = {
   questions?: number;
   durationMinutes?: number;
   duration?: number;
+  createdAt?: string;
   order?: number;
 };
 
@@ -227,7 +228,11 @@ const SubjectDetailScreen = ({
         setTests(
           seriesTestGroups
             .flat()
-            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+            .sort((a, b) => {
+              const orderDifference = (a.order ?? 0) - (b.order ?? 0);
+              if (orderDifference) return orderDifference;
+              return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+            })
         );
       } catch (err: any) {
         console.log(

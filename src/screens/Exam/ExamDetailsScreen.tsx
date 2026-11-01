@@ -18,8 +18,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import RazorpayCheckout from "react-native-razorpay";
 
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { useFocusEffect } from "@react-navigation/native";
 
 import type { AppStackParamList } from "../../navigation/AppNavigator";
 
@@ -30,6 +32,7 @@ import {
   Subject,
 } from "../../services/examService";
 import { API_BASE_URL } from "../../config/api";
+import { getToken } from "../../services/authService";
 
 type Props = NativeStackScreenProps<
   AppStackParamList,
@@ -102,6 +105,78 @@ const ExamDetailsScreen = ({
     useState("");
 
   const [tab, setTab] = useState("overview");
+  const [premiumUnlocked, setPremiumUnlocked] = useState(false);
+  const [buyingPremium, setBuyingPremium] = useState(false);
+
+  const refreshPremiumStatus = useCallback(async () => {
+    try {
+      const token = await getToken();
+      if (!token) return;
+      const response = await fetch(`${API_BASE_URL}/api/v1/payment/entitlements`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      if (response.ok) setPremiumUnlocked((data.premiumExamIds || []).includes(examId));
+    } catch (error) {
+      console.log("Premium entitlement lookup failed:", error);
+    }
+  }, [examId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshPremiumStatus();
+    }, [refreshPremiumStatus])
+  );
+
+  const buyExamPremium = async () => {
+    if (buyingPremium) return;
+    const examName = exam?.name || "Exam";
+    setBuyingPremium(true);
+    try {
+      const token = await getToken();
+      if (!token) {
+        Alert.alert("Login required", "Please log in before purchasing this exam package.");
+        return;
+      }
+      const orderResponse = await fetch(`${API_BASE_URL}/api/v1/payment/create-order`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ examId }),
+      });
+      const orderData = await orderResponse.json();
+      if (!orderResponse.ok) throw new Error(orderData.message || "Could not start payment.");
+
+      const checkout = await RazorpayCheckout.open({
+        key: orderData.keyId,
+        order_id: orderData.order.id,
+        amount: orderData.order.amount,
+        currency: orderData.order.currency,
+        name: "Test Series",
+        description: `${examName} full premium package`,
+        theme: { color: "#2563EB" },
+      });
+
+      const verifyResponse = await fetch(`${API_BASE_URL}/api/v1/payment/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(checkout),
+      });
+      const verifyData = await verifyResponse.json();
+      if (!verifyResponse.ok || !verifyData.unlocked) throw new Error(verifyData.message || "Payment verification failed.");
+      setPremiumUnlocked(true);
+      Alert.alert("Payment successful", `All premium tests for ${examName} are now unlocked.`);
+    } catch (error: any) {
+      const description = error?.description || error?.message || "Payment could not be completed.";
+      console.warn("Exam premium checkout failed:", error);
+      if (error?.code === 0 || /cancel/i.test(description)) {
+        Alert.alert("Payment cancelled", "No payment was taken. You can try again whenever you are ready.");
+        return;
+      }
+      Alert.alert("Payment failed", description);
+    } finally {
+      setBuyingPremium(false);
+    }
+  };
 
   // ==========================================
   // FETCH EXAM DETAILS
@@ -233,6 +308,13 @@ const ExamDetailsScreen = ({
             ...(nextSectionTests[sectionId] || []),
             ...tests,
           ];
+        }
+        for (const tests of Object.values(nextSectionTests)) {
+          tests.sort((a, b) => {
+            const orderDifference = (a.order ?? 0) - (b.order ?? 0);
+            if (orderDifference) return orderDifference;
+            return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+          });
         }
         setSectionTests(nextSectionTests);
 
@@ -625,6 +707,30 @@ const ExamDetailsScreen = ({
           </View>
 
         </View>
+
+        {testSeries.some((item) => item.isPremium) && (
+          <TouchableOpacity
+            disabled={premiumUnlocked || buyingPremium}
+            onPress={buyExamPremium}
+            style={{
+              marginHorizontal: 18,
+              marginTop: 16,
+              paddingVertical: 15,
+              paddingHorizontal: 18,
+              borderRadius: 14,
+              backgroundColor: premiumUnlocked ? "#DCFCE7" : "#2563EB",
+              alignItems: "center",
+            }}
+          >
+            {buyingPremium ? <ActivityIndicator color={premiumUnlocked ? "#166534" : "#FFFFFF"} /> : (
+              <Text style={{ color: premiumUnlocked ? "#166534" : "#FFFFFF", fontSize: 15, fontWeight: "700" }}>
+                {premiumUnlocked
+                  ? "✓ Full Exam Premium Unlocked"
+                  : `Unlock All Premium Tests · ₹${testSeries.filter((item) => item.isPremium).reduce((total, item) => total + Number(item.price || 0), 0)}`}
+              </Text>
+            )}
+          </TouchableOpacity>
+        )}
 
         {/* ================================= */}
         {/* TABS */}

@@ -66,6 +66,7 @@ export interface TestSeries {
     | {
         _id: string;
         name: string;
+        examId?: string;
       }
     | null;
 
@@ -82,6 +83,8 @@ export interface TestSeries {
 
   price?: number;
   originalPrice?: number;
+  isPremium?: boolean;
+  isUnlocked?: boolean;
 
   isActive?: boolean;
 }

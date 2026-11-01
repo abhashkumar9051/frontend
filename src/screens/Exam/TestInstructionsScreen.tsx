@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 
 import {
   ActivityIndicator,
+  Alert,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -9,10 +10,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import RazorpayCheckout from "react-native-razorpay";
 
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { AppStackParamList } from "../../navigation/AppNavigator";
 import { API_BASE_URL } from "../../config/api";
+import { getToken } from "../../services/authService";
 
 type Props = NativeStackScreenProps<
   AppStackParamList,
@@ -92,6 +95,9 @@ const TestInstructionsScreen = ({
 
   const [checked, setChecked] =
     useState(false);
+  const [premiumExamId, setPremiumExamId] = useState<string | null>(null);
+  const [buyingPremium, setBuyingPremium] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
 
   /* ================================================= */
   /* FETCH TEST */
@@ -125,8 +131,10 @@ const TestInstructionsScreen = ({
           "================================"
         );
 
+        const token = await getToken();
         const response = await fetch(
-          `${API_URL}/api/v1/tests/${testId}/questions`
+          `${API_URL}/api/v1/tests/${testId}/questions`,
+          { headers: token ? { Authorization: `Bearer ${token}` } : {} }
         );
 
         const data = await response.json();
@@ -137,6 +145,11 @@ const TestInstructionsScreen = ({
         );
 
         if (!response.ok) {
+          if (data?.code === "PREMIUM_REQUIRED") {
+            setPremiumExamId(data.examId || null);
+            setError(data.message || "Buy this exam's premium package to open this mock.");
+            return;
+          }
           throw new Error(
             data?.message ||
               "Unable to load test."
@@ -181,7 +194,66 @@ const TestInstructionsScreen = ({
       setLoading(false);
       setError("Test ID is missing.");
     }
-  }, [testId, subjectId]);
+  }, [testId, subjectId, retryKey]);
+
+  const buyPremiumForExam = async () => {
+    if (!premiumExamId || buyingPremium) return;
+    setBuyingPremium(true);
+    try {
+      const token = await getToken();
+      if (!token) {
+        Alert.alert("Login required", "Please log in before purchasing premium access.");
+        return;
+      }
+
+      const orderResponse = await fetch(`${API_BASE_URL}/api/v1/payment/create-order`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ examId: premiumExamId }),
+      });
+      const orderData = await orderResponse.json();
+      if (orderResponse.status === 409) {
+        setPremiumExamId(null);
+        setLoading(true);
+        setRetryKey((value) => value + 1);
+        return;
+      }
+      if (!orderResponse.ok) throw new Error(orderData.message || "Could not start payment.");
+
+      const checkout = await RazorpayCheckout.open({
+        key: orderData.keyId,
+        order_id: orderData.order.id,
+        amount: orderData.order.amount,
+        currency: orderData.order.currency,
+        name: "Test Series",
+        description: `${orderData.examName || "Exam"} premium package`,
+        theme: { color: "#4F46E5" },
+      });
+
+      const verifyResponse = await fetch(`${API_BASE_URL}/api/v1/payment/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(checkout),
+      });
+      const verifyData = await verifyResponse.json();
+      if (!verifyResponse.ok || !verifyData.unlocked) throw new Error(verifyData.message || "Payment verification failed.");
+
+      setPremiumExamId(null);
+      setLoading(true);
+      setRetryKey((value) => value + 1);
+      Alert.alert("Payment successful", `This exam's premium mocks are unlocked until ${new Date(verifyData.validUntil).toLocaleDateString("en-IN")}.`);
+    } catch (error: any) {
+      const message = error?.description || error?.message || "Payment could not be completed.";
+      if (error?.code === 0 || /cancel/i.test(message)) {
+        Alert.alert("Payment cancelled", "No payment was taken. You can try again.");
+      } else {
+        console.warn("Premium checkout from test instructions failed:", error);
+        Alert.alert("Payment failed", message);
+      }
+    } finally {
+      setBuyingPremium(false);
+    }
+  };
 
   /* ================================================= */
   /* START TEST */
@@ -229,12 +301,24 @@ const TestInstructionsScreen = ({
         </Text>
 
         <Text style={styles.errorTitle}>
-          Unable to load test
+          {premiumExamId ? "Premium package required" : "Unable to load test"}
         </Text>
 
         <Text style={styles.errorText}>
           {error || "Test not found."}
         </Text>
+
+        {premiumExamId && (
+          <TouchableOpacity
+            style={styles.buyPremiumButton}
+            onPress={buyPremiumForExam}
+            disabled={buyingPremium}
+          >
+            {buyingPremium ? <ActivityIndicator color="#FFFFFF" /> : (
+              <Text style={styles.backButtonText}>Buy exam premium package</Text>
+            )}
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity
           style={styles.backButton}
@@ -581,6 +665,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 25,
     paddingVertical: 12,
     borderRadius: 12,
+  },
+
+  buyPremiumButton: {
+    minWidth: 230,
+    marginTop: 18,
+    backgroundColor: "#4F46E5",
+    paddingHorizontal: 25,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
   },
 
   backButtonText: {
