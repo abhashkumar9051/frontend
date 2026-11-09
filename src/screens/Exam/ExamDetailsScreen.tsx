@@ -49,6 +49,7 @@ const ExamDetailsScreen = ({
   // STATE
   // ==========================================
   const [questionCount, setQuestionCount] = useState(0);
+  const [examTestCount, setExamTestCount] = useState<number | null>(null);
 
  useEffect(() => {
   const fetchQuestionCount = async () => {
@@ -232,6 +233,11 @@ const ExamDetailsScreen = ({
 
         setExam(data.exam);
         setTestSeries(data.series || []);
+        setExamTestCount(
+          Number.isFinite(Number(data.testCount))
+            ? Number(data.testCount)
+            : null
+        );
 
         // =====================================
         // SUBJECTS
@@ -472,10 +478,11 @@ const ExamDetailsScreen = ({
     exam.description ||
     `Prepare for ${examTitle} with structured tests, previous year questions and detailed performance analysis.`;
 
-  const totalTests = subjects.reduce(
+  const subjectTestCount = subjects.reduce(
     (total, subject) => total + (Number(subject.tests) || 0),
     0
   );
+  const totalTests = Math.max(examTestCount ?? 0, subjectTestCount);
 
   const pyqSeries = testSeries.filter(
     (item) => item.type === "pyq"

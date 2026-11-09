@@ -81,10 +81,10 @@ type FeaturedTest = {
     title: string;
     type?: string;
     description?: string;
-    subjectId: {
+    subjectId?: {
       _id: string;
       name: string;
-    };
+    } | null;
   };
 };
 
@@ -96,10 +96,10 @@ type RecentAttempt = {
     totalQuestions?: number;
     durationMinutes?: number;
   };
-  subjectId: {
+  subjectId?: {
     _id: string;
     name: string;
-  };
+  } | null;
   totalQuestions: number;
   accuracy: number;
   submittedAt: string;
@@ -222,7 +222,7 @@ const fetchRecentAttempts = useCallback(async () => {
     setRecentAttempts(
       Array.isArray(result.attempts)
         ? result.attempts.filter(
-            (attempt: RecentAttempt) => attempt.testId && attempt.subjectId
+            (attempt: RecentAttempt) => attempt.testId
           )
         : []
     );
@@ -442,14 +442,14 @@ useEffect(() => {
     if (!featuredTest) return;
     navigation.navigate("TestInstructions", {
       testId: featuredTest.test._id,
-      subjectId: featuredTest.series.subjectId._id,
+      subjectId: featuredTest.series.subjectId?._id,
     });
   };
 
   const openAttemptAnalysis = (attempt: RecentAttempt) => {
     navigation.navigate("Analysis", {
       testId: attempt.testId._id,
-      subjectId: attempt.subjectId._id,
+      subjectId: attempt.subjectId?._id,
       score: Number(attempt.accuracy) || 0,
       total: Number(attempt.totalQuestions) || 0,
       attemptId: attempt._id,
@@ -874,7 +874,7 @@ useEffect(() => {
                 </Text>
               </View>
               <Text style={styles.testLevel}>
-                {featuredTest.series.subjectId.name}
+                {featuredTest.series.subjectId?.name || featuredTest.series.title}
               </Text>
             </View>
 
@@ -1052,7 +1052,7 @@ useEffect(() => {
                     {attempt.testId.title}
                   </Text>
                   <Text style={styles.recentSubtitle} numberOfLines={1}>
-                    {attempt.subjectId.name} · {attempt.totalQuestions} questions
+                    {attempt.subjectId?.name || "Exam practice"} · {attempt.totalQuestions} questions
                   </Text>
                   <View style={styles.progressBackground}>
                     <View

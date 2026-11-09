@@ -43,9 +43,11 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import LoginScreen from "../screens/Login/LoginScreen";
 import OTPScreen from "../screens/Login/OTPScreen.tsx";
+import LegalInfoScreen from "../screens/Legal/LegalInfoScreen";
 
 export type AuthStackParamList = {
   Login: undefined;
+  LegalInfo: { type: "privacy" | "terms" | "deletion" };
   OTP: {
     mobileNumber: string;
   };
@@ -70,6 +72,7 @@ const AuthNavigator = () => {
         name="OTP"
         component={OTPScreen}
       />
+      <Stack.Screen name="LegalInfo" component={LegalInfoScreen as any} />
     </Stack.Navigator>
   );
 };

@@ -479,7 +479,8 @@ const handleGoogleLogin = async () => {
           <View style={styles.loginCard}>
 
             <Text style={styles.loginTitle}>
-              Welcome back
+              {/* Welcome back */}
+              Use Sigin with google
             </Text>
 
             <Text style={styles.loginSubtitle}>
@@ -648,13 +649,21 @@ const handleGoogleLogin = async () => {
 
               By continuing, you agree to our{" "}
 
-              <Text style={styles.termsLink}>
+              <Text
+                style={styles.termsLink}
+                onPress={() => navigation.navigate("LegalInfo", { type: "terms" })}
+                accessibilityRole="link"
+              >
                 Terms
               </Text>
 
               {" "}and{" "}
 
-              <Text style={styles.termsLink}>
+              <Text
+                style={styles.termsLink}
+                onPress={() => navigation.navigate("LegalInfo", { type: "privacy" })}
+                accessibilityRole="link"
+              >
                 Privacy Policy
               </Text>
 
@@ -719,6 +728,7 @@ const handleGoogleLogin = async () => {
           <Text style={styles.version}>
             GenZExam
           </Text>
+
 
 
         </ScrollView>

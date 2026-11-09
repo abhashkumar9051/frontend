@@ -441,6 +441,21 @@ const ProfileScreen = ({ navigation }: Props) => {
         </View>
 
 
+        <Text style={styles.sectionTitle}>Legal & Support</Text>
+        <View style={styles.sectionCard}>
+          <TouchableOpacity style={styles.menuRow} onPress={() => navigation.navigate("LegalInfo", { type: "privacy" })}>
+            <View style={styles.menuContent}><Text style={styles.menuTitle}>Privacy Policy</Text><Text style={styles.menuSubtitle}>How we use account, test and payment information</Text></View><Text style={styles.arrow}>›</Text>
+          </TouchableOpacity>
+          <View style={styles.divider} />
+          <TouchableOpacity style={styles.menuRow} onPress={() => navigation.navigate("LegalInfo", { type: "terms" })}>
+            <View style={styles.menuContent}><Text style={styles.menuTitle}>Terms & Conditions</Text><Text style={styles.menuSubtitle}>Rules for using GenZExam services</Text></View><Text style={styles.arrow}>›</Text>
+          </TouchableOpacity>
+          <View style={styles.divider} />
+          <TouchableOpacity style={styles.menuRow} onPress={() => navigation.navigate("LegalInfo", { type: "deletion" })}>
+            <View style={styles.menuContent}><Text style={styles.menuTitle}>Account Deletion Policy</Text><Text style={styles.menuSubtitle}>How to request deletion of your account</Text></View><Text style={styles.arrow}>›</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* LOGOUT */}
 
         <TouchableOpacity

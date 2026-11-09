@@ -16,6 +16,7 @@ import ResultScreen from "../screens/Exam/ResultScreen";
 import AnalysisScreen from "../screens/Exam/AnalysisScreen";
 import SubjectPerformanceScreen from "../screens/Exam/SubjectPerformanceScreen";
 import AllExamsScreen from "../screens/Exam/AllExamsScreen";
+import LegalInfoScreen from "../screens/Legal/LegalInfoScreen";
 export type AppStackParamList = {
   // ==========================================
   // HOME
@@ -25,6 +26,7 @@ export type AppStackParamList = {
   AllExams: undefined;
 
   Profile: undefined;
+  LegalInfo: { type: "privacy" | "terms" | "deletion" };
 
   // ==========================================
   // EXAM
@@ -167,6 +169,7 @@ const AppNavigator = ({
         name="Profile"
         component={ProfileScreen}
       />
+      <Stack.Screen name="LegalInfo" component={LegalInfoScreen} options={{ headerShown: false }} />
 
       {/* ======================================
           EXAM

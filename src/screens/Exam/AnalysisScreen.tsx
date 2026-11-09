@@ -239,7 +239,12 @@ const AnalysisScreen = ({
 
           const questionResponse =
             await fetch(
-              `${API_URL}/api/v1/tests/${testId}/questions`
+              `${API_URL}/api/v1/tests/${testId}/questions`,
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              }
             );
 
           const questionData =

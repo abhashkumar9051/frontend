@@ -98,6 +98,7 @@ export interface ExamDetails {
   subjects: Subject[];
   series: TestSeries[];
   sections: ContentSection[];
+  testCount?: number;
 }
 
 // ==========================================
@@ -147,5 +148,8 @@ export const getExamById = async (
     subjects: data.subjects || [],
     series: data.series || [],
     sections: data.sections || [],
+    testCount: Number.isFinite(Number(data.testCount))
+      ? Number(data.testCount)
+      : undefined,
   };
 };
