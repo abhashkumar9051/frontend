@@ -13,6 +13,9 @@ export interface Exam {
   description: string;
   logo: string;
   order: number;
+  offerPrice?: number;
+  isOfferActive?: boolean;
+  actualPrice?: number;
 }
 
 // ==========================================

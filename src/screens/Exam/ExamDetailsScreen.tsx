@@ -146,6 +146,11 @@ const ExamDetailsScreen = ({
       });
       const orderData = await orderResponse.json();
       if (!orderResponse.ok) throw new Error(orderData.message || "Could not start payment.");
+      if (orderData.free && orderData.unlocked) {
+        setPremiumUnlocked(true);
+        Alert.alert("Free access activated", "The exam premium package is free under the current offer.");
+        return;
+      }
 
       const checkout = await RazorpayCheckout.open({
         key: orderData.keyId,
@@ -483,6 +488,11 @@ const ExamDetailsScreen = ({
     0
   );
   const totalTests = Math.max(examTestCount ?? 0, subjectTestCount);
+  const packagePrice = testSeries.filter((item) => item.isPremium)
+    .reduce((total, item) => total + Number(item.price || 0), 0);
+  const offerPrice = Number(exam.offerPrice || 0);
+  const offerActive = exam.isOfferActive === true || (exam.isOfferActive == null && offerPrice > 0);
+  const hasOffer = offerActive && offerPrice >= 0 && offerPrice < packagePrice;
 
   const pyqSeries = testSeries.filter(
     (item) => item.type === "pyq"
@@ -730,11 +740,20 @@ const ExamDetailsScreen = ({
             }}
           >
             {buyingPremium ? <ActivityIndicator color={premiumUnlocked ? "#166534" : "#FFFFFF"} /> : (
-              <Text style={{ color: premiumUnlocked ? "#166534" : "#FFFFFF", fontSize: 15, fontWeight: "700" }}>
-                {premiumUnlocked
-                  ? "✓ Full Exam Premium Unlocked"
-                  : `Unlock All Premium Tests · ₹${testSeries.filter((item) => item.isPremium).reduce((total, item) => total + Number(item.price || 0), 0)}`}
-              </Text>
+              premiumUnlocked ? (
+                <Text style={{ color: "#166534", fontSize: 15, fontWeight: "700" }}>✓ Full Exam Premium Unlocked</Text>
+              ) : (
+                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", flexWrap: "wrap" }}>
+                  <Text style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "700" }}>Unlock All Premium Tests · </Text>
+                  {hasOffer && (
+                    <View style={{ position: "relative", marginRight: 6 }}>
+                      <Text style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "700" }}>₹{packagePrice}</Text>
+                      <View style={{ position: "absolute", left: -2, right: -2, top: "52%", height: 3, borderRadius: 2, backgroundColor: "#FF3030" }} />
+                    </View>
+                  )}
+                  <Text style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "700" }}>₹{hasOffer ? offerPrice : packagePrice}</Text>
+                </View>
+              )
             )}
           </TouchableOpacity>
         )}

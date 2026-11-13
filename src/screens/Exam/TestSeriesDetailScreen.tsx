@@ -374,6 +374,12 @@ const TestSeriesDetailScreen = ({
         return;
       }
       if (!orderResponse.ok) throw new Error(orderData.message || "Could not start payment.");
+      if (orderData.free && orderData.unlocked) {
+        setSeries((previous) => previous ? { ...previous, isUnlocked: true } : previous);
+        await fetchTests(false);
+        Alert.alert("Free access activated", "All premium tests in this exam are now unlocked.");
+        return;
+      }
 
       const checkout = await RazorpayCheckout.open({
         key: orderData.keyId,
@@ -589,6 +595,17 @@ const TestSeriesDetailScreen = ({
               }
             />
           </View>
+
+          {series?.isPremium && !series.isUnlocked && (
+            <TouchableOpacity
+              onPress={buyExamPremium}
+              disabled={buyingPremium}
+              activeOpacity={0.85}
+              style={{ marginTop: 16, paddingHorizontal: 22, paddingVertical: 12, borderRadius: 12, backgroundColor: "#4F46E5", flexDirection: "row", alignItems: "center", justifyContent: "center" }}
+            >
+              {buyingPremium ? <ActivityIndicator color="#FFFFFF" /> : <Text style={{ color: "#FFFFFF", fontWeight: "800" }}>Buy Premium Access</Text>}
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* ================================= */}

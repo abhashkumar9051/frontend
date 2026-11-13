@@ -1752,6 +1752,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Modal,
   SafeAreaView,
   ScrollView,
@@ -1783,6 +1784,7 @@ type Question = {
 
   question?: string;
   questionText?: string;
+  images?: { url: string; alt?: string }[];
   text?: string;
 
   options?: string[];
@@ -2852,6 +2854,16 @@ submitTestRef.current = submitTest;
         >
           {questionText}
         </Text>
+
+        {!!currentQuestion.images?.length && currentQuestion.images.map((image, imageIndex) => (
+          <Image
+            key={`${currentQuestion._id}-image-${imageIndex}`}
+            source={{ uri: image.url }}
+            accessibilityLabel={image.alt || "Question image"}
+            resizeMode="contain"
+            style={{ width: "100%", height: 240, marginTop: 12, marginBottom: 8 }}
+          />
+        ))}
 
         {/* MARKS */}
 

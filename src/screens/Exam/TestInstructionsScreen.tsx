@@ -219,6 +219,13 @@ const TestInstructionsScreen = ({
         return;
       }
       if (!orderResponse.ok) throw new Error(orderData.message || "Could not start payment.");
+      if (orderData.free && orderData.unlocked) {
+        setPremiumExamId(null);
+        setLoading(true);
+        setRetryKey((value) => value + 1);
+        Alert.alert("Free access activated", "You can now view the test instructions.");
+        return;
+      }
 
       const checkout = await RazorpayCheckout.open({
         key: orderData.keyId,
