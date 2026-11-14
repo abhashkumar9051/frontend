@@ -57,7 +57,7 @@ react {
 /**
  * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
  */
-def enableProguardInReleaseBuilds = false
+def enableProguardInReleaseBuilds = true
 
 /**
  * The preferred build flavor of JavaScriptCore (JSC)
@@ -85,6 +85,8 @@ android {
         versionCode 2
         versionName "1.0.1"
     }
+
+    // Build one universal APK that works across supported Android CPU architectures.
  signingConfigs {
     debug {
         storeFile file('testseries-debug-v2.keystore')
@@ -108,6 +110,7 @@ android {
     release {
         signingConfig signingConfigs.release
         minifyEnabled enableProguardInReleaseBuilds
+        shrinkResources true
         proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
     }
 }
@@ -128,14 +131,27 @@ dependencies {
     }
 }
 
-// Give the release artifact a stable, app-specific filename.
+// Give the single universal release artifact a stable, app-specific filename.
 tasks.configureEach { task ->
     if (task.name == "assembleRelease") {
         task.doLast {
-            def releaseApk = file("$buildDir/outputs/apk/release/app-release.apk")
-            def namedApk = file("$buildDir/outputs/apk/release/genzexam.apk")
-            if (releaseApk.exists() && !releaseApk.renameTo(namedApk)) {
-                throw new GradleException("Could not rename release APK to ${namedApk}")
+            def releaseDir = file("$buildDir/outputs/apk/release")
+            def apk = new File(releaseDir, "genzexam.apk")
+            def source = new File(releaseDir, "app-release.apk")
+            if (source.exists()) {
+                if (apk.exists() && !apk.delete()) {
+                    throw new GradleException("Could not replace the existing genzexam.apk release artifact")
+                }
+                if (!source.renameTo(apk)) {
+                    throw new GradleException("Could not create the universal genzexam.apk release artifact")
+                }
+            }
+            if (!apk.exists()) throw new GradleException("The universal genzexam.apk release artifact was not created")
+
+            // Keep the website's single APK download in sync with each release build.
+            def websitePublic = new File(rootProject.projectDir.parentFile.parentFile, "website/public")
+            if (websitePublic.exists()) {
+                copy { from apk; into websitePublic; rename { "genzexam.apk" } }
             }
         }
     }
