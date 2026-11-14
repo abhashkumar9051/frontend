@@ -32,7 +32,7 @@ export type AppStackParamList = {
   Profile: undefined;
   MyLearning: undefined;
   Leaderboard: { testId?: string } | undefined;
-  Messages: { userId: string; name: string };
+  Messages: { userId: string; name: string; profileImage?: string };
   Inbox: undefined;
   LegalInfo: { type: "privacy" | "terms" | "deletion" };
 
