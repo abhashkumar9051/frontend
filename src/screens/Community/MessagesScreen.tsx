@@ -6,6 +6,7 @@ import {
   Image,
   KeyboardAvoidingView,
   Modal,
+  PermissionsAndroid,
   Platform,
   Pressable,
   StyleSheet,
@@ -21,9 +22,11 @@ import { API_BASE_URL } from "../../config/api";
 import { getToken } from "../../services/authService";
 import ProfileAvatar from "../../components/ProfileAvatar";
 import { launchImageLibrary, type Asset } from "react-native-image-picker";
+import { CameraRoll } from "@react-native-camera-roll/camera-roll";
+import RNFS from "react-native-fs";
 
 type Props = NativeStackScreenProps<AppStackParamList, "Messages">;
-type Message = { _id: string; text: string; isMine: boolean; fromUserId?: string; editedAt?: string | null; imageUrl?: string | null };
+type Message = { _id: string; text: string; isMine: boolean; fromUserId?: string; editedAt?: string | null; imageUrl?: string | null; imageMimeType?: string };
 type PickedImage = { uri: string; base64: string; mimeType: string };
 
 export default function MessagesScreen({ route, navigation }: Props) {
@@ -39,6 +42,8 @@ export default function MessagesScreen({ route, navigation }: Props) {
   const [personImage, setPersonImage] = useState(route.params.profileImage || "");
   const [pickedImage, setPickedImage] = useState<PickedImage | null>(null);
   const [sending, setSending] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<Message | null>(null);
+  const [savingImage, setSavingImage] = useState(false);
 
   const refresh = useCallback(async (authToken: string, mounted = true) => {
     const response = await fetch(`${API_BASE_URL}/api/v1/community/messages/${userId}`, {
@@ -178,6 +183,39 @@ export default function MessagesScreen({ route, navigation }: Props) {
     }
   };
 
+  const downloadImage = async () => {
+    if (!selectedImage?.imageUrl || savingImage) return;
+    setSavingImage(true);
+    let tempPath = "";
+    let imagePath = "";
+    try {
+      if (Platform.OS === "android" && Number(Platform.Version) <= 28) {
+        const permission = PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE;
+        const granted = await PermissionsAndroid.request(permission);
+        if (granted !== PermissionsAndroid.RESULTS.GRANTED) throw new Error("Storage permission is needed to save the image.");
+      }
+      tempPath = `${RNFS.CachesDirectoryPath}/genzexam-${selectedImage._id}.download`;
+      const result = await RNFS.downloadFile({
+        fromUrl: `${API_BASE_URL}${selectedImage.imageUrl}`,
+        toFile: tempPath,
+        headers: { Authorization: `Bearer ${token}` },
+      }).promise;
+      if (result.statusCode < 200 || result.statusCode >= 300) throw new Error("Could not download this image.");
+      const contentType = selectedImage.imageMimeType || "image/jpeg";
+      const extension = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
+      imagePath = `${RNFS.CachesDirectoryPath}/genzexam-${selectedImage._id}.${extension}`;
+      await RNFS.moveFile(tempPath, imagePath);
+      await CameraRoll.save(`file://${imagePath}`, { type: "photo", album: "GenZExam" });
+      Alert.alert("Image saved", "The image has been saved to your Photos/Gallery.");
+    } catch (e) {
+      Alert.alert("Could not save image", (e as Error).message || "Please try again.");
+    } finally {
+      if (tempPath) void RNFS.unlink(tempPath).catch(() => undefined);
+      if (imagePath) void RNFS.unlink(imagePath).catch(() => undefined);
+      setSavingImage(false);
+    }
+  };
+
   return (
     <SafeAreaView style={s.container}>
       <KeyboardAvoidingView style={s.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
@@ -198,7 +236,7 @@ export default function MessagesScreen({ route, navigation }: Props) {
               <View style={[s.messageRow, item.isMine && s.messageRowMine]}>
                 {!item.isMine && <ProfileAvatar uri={personImage} name={name} size={30} style={s.bubbleAvatar} />}
                 <Pressable onLongPress={() => showActions(item)} delayLongPress={350} style={[s.bubble, item.isMine && s.mine]}>
-                  {item.imageUrl ? <Image source={{ uri: `${API_BASE_URL}${item.imageUrl}`, headers: { Authorization: `Bearer ${token}` } }} resizeMode="cover" style={s.sentImage} /> : null}
+                  {item.imageUrl ? <TouchableOpacity activeOpacity={0.9} onPress={() => setSelectedImage(item)} accessibilityLabel="Open image preview"><Image source={{ uri: `${API_BASE_URL}${item.imageUrl}`, headers: { Authorization: `Bearer ${token}` } }} resizeMode="cover" style={s.sentImage} /></TouchableOpacity> : null}
                   {item.text ? <Text style={[s.messageText, item.isMine && s.ownText]}>{item.text}</Text> : null}
                   {item.editedAt ? <Text style={[s.editedLabel, item.isMine && s.editedOwn]}>Edited</Text> : null}
                 </Pressable>
@@ -228,6 +266,14 @@ export default function MessagesScreen({ route, navigation }: Props) {
               <TouchableOpacity onPress={() => { void saveEdit(); }} disabled={!editText.trim() || savingEdit} style={[s.saveButton, (!editText.trim() || savingEdit) && s.disabled]}><Text style={s.saveText}>{savingEdit ? "Saving…" : "Save"}</Text></TouchableOpacity>
             </View>
           </View>
+        </View>
+      </Modal>
+
+      <Modal visible={Boolean(selectedImage?.imageUrl)} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setSelectedImage(null)}>
+        <View style={s.imageViewer}>
+          <TouchableOpacity style={s.viewerClose} onPress={() => setSelectedImage(null)} accessibilityLabel="Close image preview"><Text style={s.viewerCloseText}>×</Text></TouchableOpacity>
+          {selectedImage?.imageUrl ? <Image source={{ uri: `${API_BASE_URL}${selectedImage.imageUrl}`, headers: { Authorization: `Bearer ${token}` } }} resizeMode="contain" style={s.viewerImage} /> : null}
+          <TouchableOpacity style={[s.downloadButton, savingImage && s.disabled]} disabled={savingImage} onPress={() => { void downloadImage(); }}><Text style={s.downloadButtonText}>{savingImage ? "Saving…" : "↓  Download image"}</Text></TouchableOpacity>
         </View>
       </Modal>
     </SafeAreaView>
@@ -266,6 +312,12 @@ const s = StyleSheet.create({
   sendDisabled: { opacity: 0.55 },
   sendText: { color: "white", fontWeight: "800", fontSize: 23, marginLeft: 2 },
   sentImage: { width: 220, height: 180, borderRadius: 13, marginBottom: 4, backgroundColor: "#E9E5F0" },
+  imageViewer: { flex: 1, backgroundColor: "#0B0A10", alignItems: "center", justifyContent: "center", paddingHorizontal: 16, paddingVertical: 36 },
+  viewerClose: { position: "absolute", zIndex: 2, top: 20, right: 18, width: 46, height: 46, borderRadius: 23, alignItems: "center", justifyContent: "center", backgroundColor: "#FFFFFF22", borderWidth: 1, borderColor: "#FFFFFF55" },
+  viewerCloseText: { color: "white", fontSize: 31, lineHeight: 34 },
+  viewerImage: { width: "100%", height: "78%" },
+  downloadButton: { marginTop: 17, minHeight: 48, borderRadius: 25, backgroundColor: "#8B18E8", alignItems: "center", justifyContent: "center", paddingHorizontal: 23 },
+  downloadButtonText: { color: "white", fontWeight: "800", fontSize: 14 },
   error: { color: "#bd4545", paddingHorizontal: 12, paddingVertical: 5 },
   modalBackdrop: { flex: 1, backgroundColor: "#17172E88", justifyContent: "center", padding: 24 },
   editCard: { backgroundColor: "white", borderRadius: 24, padding: 20, elevation: 10 },
