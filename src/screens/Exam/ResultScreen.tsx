@@ -227,6 +227,14 @@ const ResultScreen = ({ route, navigation }: Props) => {
           </Text>
         </TouchableOpacity>
 
+        <TouchableOpacity
+          style={styles.secondary}
+          onPress={() => navigation.navigate("Leaderboard", { testId })}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.secondaryText}>View this test’s leaderboard</Text>
+        </TouchableOpacity>
+
         {/* HOME BUTTON */}
 
         <TouchableOpacity
@@ -485,7 +493,7 @@ const styles = StyleSheet.create({
   },
 
   primary: {
-    backgroundColor: "#4F46E5",
+    backgroundColor: "#6D28D9",
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: "center",

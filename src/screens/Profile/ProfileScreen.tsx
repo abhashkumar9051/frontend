@@ -1,7 +1,6 @@
 import React, { useCallback, useState } from "react";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import {
-  SafeAreaView,
   View,
   Text,
   TouchableOpacity,
@@ -9,7 +8,11 @@ import {
   StatusBar,
   Alert,
   ScrollView,
+  TextInput,
+  ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import BottomTabBar from "../../components/BottomTabBar";
 
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
@@ -20,6 +23,7 @@ import type { RootState } from "../../redux/store";
 
 import {
   logout,
+  profileUpdated,
 } from "../../redux/slices/authSlice";
 
 import {
@@ -28,7 +32,8 @@ import {
 
 import type { AppStackParamList } from "../../navigation/AppNavigator";
 import { API_BASE_URL } from "../../config/api";
-import { getToken } from "../../services/authService";
+import { getSavedUser, getToken } from "../../services/authService";
+import { getCachedJson } from "../../services/queryCache";
 
 type PremiumExam = {
   examId: string;
@@ -56,6 +61,55 @@ const ProfileScreen = ({ navigation }: Props) => {
 
   const [premiumExams, setPremiumExams] = useState<PremiumExam[]>([]);
   const [premiumLoading, setPremiumLoading] = useState(true);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState(user?.name || "");
+  const [savingName, setSavingName] = useState(false);
+
+  useFocusEffect(useCallback(() => {
+    let mounted = true;
+    const loadProfile = async () => {
+      try {
+        const token = await getToken();
+        if (!token) return;
+        const savedUser = await getSavedUser();
+        const data = await getCachedJson<any>(`user:${savedUser?.id || "signed-in"}:profile`, `${API_BASE_URL}/api/v1/auth/me`, token);
+        if (mounted) {
+          dispatch(profileUpdated(data.user));
+          setNameDraft(data.user.name || "");
+        }
+      } catch (error) {
+        console.warn("Profile details could not be refreshed:", error);
+      }
+    };
+    void loadProfile();
+    return () => { mounted = false; };
+  }, [dispatch]));
+
+  const saveName = async () => {
+    const name = nameDraft.trim().replace(/\s+/g, " ");
+    if (name.length < 2 || name.length > 60) {
+      Alert.alert("Check your name", "Name must be between 2 and 60 characters.");
+      return;
+    }
+    setSavingName(true);
+    try {
+      const token = await getToken();
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Unable to save your name.");
+      dispatch(profileUpdated(data.user));
+      setNameDraft(data.user.name);
+      setIsEditingName(false);
+    } catch (error) {
+      Alert.alert("Name not saved", (error as Error).message);
+    } finally {
+      setSavingName(false);
+    }
+  };
 
   useFocusEffect(useCallback(() => {
     let mounted = true;
@@ -64,11 +118,9 @@ const ProfileScreen = ({ navigation }: Props) => {
       try {
         const token = await getToken();
         if (!token) return;
-        const response = await fetch(`${API_BASE_URL}/api/v1/payment/entitlements`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await response.json();
-        if (mounted && response.ok) {
+        const savedUser = await getSavedUser();
+        const data = await getCachedJson<any>(`user:${savedUser?.id || "signed-in"}:entitlements`, `${API_BASE_URL}/api/v1/payment/entitlements`, token);
+        if (mounted) {
           setPremiumExams(Array.isArray(data.premiumExams) ? data.premiumExams : []);
         }
       } catch (error) {
@@ -159,7 +211,8 @@ const ProfileScreen = ({ navigation }: Props) => {
 
 
   const mobileNumber =
-    user?.mobileNumber || "Not available";
+    user?.mobileNumber || "Not added";
+  const emailAddress = user?.email || "Not added";
 
 
   const firstLetter =
@@ -167,10 +220,10 @@ const ProfileScreen = ({ navigation }: Props) => {
 
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
 
       <StatusBar
-        barStyle="light-content"
+        barStyle="dark-content"
       />
 
       <ScrollView
@@ -213,14 +266,22 @@ const ProfileScreen = ({ navigation }: Props) => {
           </View>
 
 
-          <Text style={styles.name}>
-            {userName}
-          </Text>
+          {isEditingName ? (
+            <View style={styles.nameEditor}>
+              <TextInput value={nameDraft} onChangeText={setNameDraft} autoFocus maxLength={60} placeholder="Your name" style={styles.nameInput} returnKeyType="done" onSubmitEditing={saveName} />
+              <TouchableOpacity style={styles.nameSaveButton} onPress={saveName} disabled={savingName}>
+                {savingName ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.nameSaveText}>Save</Text>}
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.nameCancelButton} onPress={() => { setNameDraft(user?.name || ""); setIsEditingName(false); }} disabled={savingName}><Text style={styles.nameCancelText}>Cancel</Text></TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.nameDisplayRow}>
+              <Text style={styles.name}>{userName}</Text>
+              <TouchableOpacity style={styles.editNameButton} onPress={() => { setNameDraft(user?.name || ""); setIsEditingName(true); }} accessibilityLabel="Edit name"><Text style={styles.editNameText}>✎ Edit</Text></TouchableOpacity>
+            </View>
+          )}
 
-
-          <Text style={styles.mobile}>
-            +91 {mobileNumber}
-          </Text>
+          <Text style={styles.mobile}>{mobileNumber !== "Not added" ? `+91 ${mobileNumber}` : emailAddress}</Text>
 
 
           <View style={styles.studentBadge}>
@@ -245,6 +306,14 @@ const ProfileScreen = ({ navigation }: Props) => {
 
         <View style={styles.sectionCard}>
 
+          <View style={styles.infoRow}>
+            <View style={styles.iconBox}><Text style={styles.icon}>✎</Text></View>
+            <View style={styles.infoContent}><Text style={styles.infoLabel}>Name</Text><Text style={styles.infoValue}>{userName}</Text></View>
+            <TouchableOpacity onPress={() => { setNameDraft(user?.name || ""); setIsEditingName(true); }}><Text style={styles.inlineEdit}>Edit</Text></TouchableOpacity>
+          </View>
+
+          <View style={styles.divider} />
+
           {/* MOBILE */}
 
           <View style={styles.infoRow}>
@@ -262,13 +331,20 @@ const ProfileScreen = ({ navigation }: Props) => {
               </Text>
 
               <Text style={styles.infoValue}>
-                +91 {mobileNumber}
+                {mobileNumber === "Not added" ? mobileNumber : `+91 ${mobileNumber}`}
               </Text>
 
             </View>
 
           </View>
 
+
+          <View style={styles.divider} />
+
+          <View style={styles.infoRow}>
+            <View style={styles.iconBox}><Text style={styles.icon}>✉</Text></View>
+            <View style={styles.infoContent}><Text style={styles.infoLabel}>Email</Text><Text style={styles.infoValue}>{emailAddress}</Text></View>
+          </View>
 
           <View style={styles.divider} />
 
@@ -479,7 +555,7 @@ const ProfileScreen = ({ navigation }: Props) => {
         </Text>
 
       </ScrollView>
-
+      <BottomTabBar navigation={navigation} active="Profile" />
     </SafeAreaView>
   );
 };
@@ -504,7 +580,7 @@ const styles = StyleSheet.create({
 
   header: {
     height: 65,
-    backgroundColor: "#4F46E5",
+    backgroundColor: "#6D28D9",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -551,7 +627,7 @@ const styles = StyleSheet.create({
     width: 90,
     height: 90,
     borderRadius: 45,
-    backgroundColor: "#4F46E5",
+    backgroundColor: "#6D28D9",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 14,
@@ -570,6 +646,17 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
 
+  nameDisplayRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
+  editNameButton: { backgroundColor: "#F0E9FF", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
+  editNameText: { color: "#6D28D9", fontSize: 11, fontWeight: "800" },
+  nameEditor: { width: "100%", flexDirection: "row", alignItems: "center", justifyContent: "center", flexWrap: "wrap", gap: 8, paddingHorizontal: 20, marginBottom: 8 },
+  nameInput: { minWidth: 170, maxWidth: "100%", borderWidth: 1, borderColor: "#D8C8F5", backgroundColor: "#FFFFFF", borderRadius: 11, paddingHorizontal: 12, paddingVertical: 9, color: "#17172E", fontSize: 16, fontWeight: "700", textAlign: "center" },
+  nameSaveButton: { minWidth: 58, height: 40, justifyContent: "center", alignItems: "center", borderRadius: 11, backgroundColor: "#6D28D9", paddingHorizontal: 12 },
+  nameSaveText: { color: "#FFFFFF", fontWeight: "800", fontSize: 12 },
+  nameCancelButton: { minHeight: 40, justifyContent: "center", paddingHorizontal: 8 },
+  nameCancelText: { color: "#657087", fontSize: 12, fontWeight: "700" },
+  inlineEdit: { color: "#6D28D9", fontSize: 12, fontWeight: "800", padding: 8 },
+
   mobile: {
     fontSize: 15,
     color: "#6B7280",
@@ -577,14 +664,14 @@ const styles = StyleSheet.create({
   },
 
   studentBadge: {
-    backgroundColor: "#EEF2FF",
+    backgroundColor: "#F0E9FF",
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
   },
 
   studentBadgeText: {
-    color: "#4F46E5",
+    color: "#6D28D9",
     fontSize: 12,
     fontWeight: "800",
   },

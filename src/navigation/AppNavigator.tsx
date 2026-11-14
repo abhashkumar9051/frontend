@@ -17,6 +17,10 @@ import AnalysisScreen from "../screens/Exam/AnalysisScreen";
 import SubjectPerformanceScreen from "../screens/Exam/SubjectPerformanceScreen";
 import AllExamsScreen from "../screens/Exam/AllExamsScreen";
 import LegalInfoScreen from "../screens/Legal/LegalInfoScreen";
+import LeaderboardScreen from "../screens/Community/LeaderboardScreen";
+import MessagesScreen from "../screens/Community/MessagesScreen";
+import InboxScreen from "../screens/Community/InboxScreen";
+import MyLearningScreen from "../screens/Community/MyLearningScreen";
 export type AppStackParamList = {
   // ==========================================
   // HOME
@@ -26,6 +30,10 @@ export type AppStackParamList = {
   AllExams: undefined;
 
   Profile: undefined;
+  MyLearning: undefined;
+  Leaderboard: { testId?: string } | undefined;
+  Messages: { userId: string; name: string };
+  Inbox: undefined;
   LegalInfo: { type: "privacy" | "terms" | "deletion" };
 
   // ==========================================
@@ -169,6 +177,10 @@ const AppNavigator = ({
         name="Profile"
         component={ProfileScreen}
       />
+      <Stack.Screen name="MyLearning" component={MyLearningScreen} />
+      <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
+      <Stack.Screen name="Messages" component={MessagesScreen} />
+      <Stack.Screen name="Inbox" component={InboxScreen} />
       <Stack.Screen name="LegalInfo" component={LegalInfoScreen} options={{ headerShown: false }} />
 
       {/* ======================================

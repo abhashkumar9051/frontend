@@ -22,7 +22,7 @@ const privacy: [string, string][] = [
   ],
   [
     "2. Information We Collect",
-    "We may collect the following information: (a) mobile number and OTP verification details; (b) Google account identifier, name, email address and profile image if you choose Google Sign-In; (c) test answers, scores, accuracy, time taken and test attempt history; (d) exam access, order details, payment status and transaction identifiers; and (e) support messages and basic technical or security information.",
+    "We may collect the following information: (a) mobile number and OTP verification details; (b) Google account identifier, name, email address and profile image if you choose Google Sign-In; (c) test answers, scores, accuracy, time taken and test attempt history; (d) exam access, order details, payment status and transaction identifiers; and (e) support and student-to-student messages and basic technical or security information. Your name, profile image and aggregated test performance may appear on the student leaderboard.",
   ],
   [
     "3. How We Use Your Information",
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
   },
   header: {
     minHeight: 60,
-    backgroundColor: "#4F46E5",
+    backgroundColor: "#6D28D9",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",

@@ -117,9 +117,26 @@ dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
 
+    // checkout:1.6.41 declares standard-core as LATEST, which forces Gradle
+    // to query Maven metadata and can make release builds non-reproducible.
+    implementation("com.razorpay:standard-core:1.7.22")
+
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {
         implementation jscFlavor
+    }
+}
+
+// Give the release artifact a stable, app-specific filename.
+tasks.configureEach { task ->
+    if (task.name == "assembleRelease") {
+        task.doLast {
+            def releaseApk = file("$buildDir/outputs/apk/release/app-release.apk")
+            def namedApk = file("$buildDir/outputs/apk/release/genzexam.apk")
+            if (releaseApk.exists() && !releaseApk.renameTo(namedApk)) {
+                throw new GradleException("Could not rename release APK to ${namedApk}")
+            }
+        }
     }
 }

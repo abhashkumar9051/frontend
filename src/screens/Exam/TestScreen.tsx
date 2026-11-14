@@ -812,7 +812,7 @@
 
 //         <ActivityIndicator
 //           size="large"
-//           color="#4F46E5"
+//           color="#6D28D9"
 //         />
 
 //         <Text
@@ -1358,7 +1358,7 @@
 
 //     retryButton: {
 //       backgroundColor:
-//         "#4F46E5",
+//         "#6D28D9",
 //       paddingHorizontal: 30,
 //       paddingVertical: 13,
 //       borderRadius: 10,
@@ -1446,7 +1446,7 @@
 //       paddingVertical: 8,
 //       borderRadius: 9,
 //       backgroundColor:
-//         "#EEF2FF",
+//         "#F0E9FF",
 //       flexDirection:
 //         "row",
 //       alignItems:
@@ -1492,7 +1492,7 @@
 //     progressFill: {
 //       height: 5,
 //       backgroundColor:
-//         "#4F46E5",
+//         "#6D28D9",
 //       borderRadius: 5,
 //     },
 
@@ -1511,7 +1511,7 @@
 //       alignSelf:
 //         "flex-start",
 //       backgroundColor:
-//         "#EEF2FF",
+//         "#F0E9FF",
 //       paddingHorizontal: 12,
 //       paddingVertical: 7,
 //       borderRadius: 8,
@@ -1574,9 +1574,9 @@
 
 //     optionSelected: {
 //       borderColor:
-//         "#4F46E5",
+//         "#6D28D9",
 //       backgroundColor:
-//         "#EEF2FF",
+//         "#F0E9FF",
 //     },
 
 //     optionCircle: {
@@ -1595,9 +1595,9 @@
 
 //     optionCircleSelected: {
 //       backgroundColor:
-//         "#4F46E5",
+//         "#6D28D9",
 //       borderColor:
-//         "#4F46E5",
+//         "#6D28D9",
 //     },
 
 //     optionLetter: {
@@ -1621,14 +1621,14 @@
 //     },
 
 //     optionTextSelected: {
-//       color: "#312E81",
+//       color: "#5B21B6",
 //       fontWeight:
 //         "700",
 //     },
 
 //     check: {
 //       fontSize: 19,
-//       color: "#4F46E5",
+//       color: "#6D28D9",
 //       fontWeight:
 //         "800",
 //       marginLeft: 8,
@@ -1705,7 +1705,7 @@
 //       paddingHorizontal: 20,
 //       borderRadius: 10,
 //       backgroundColor:
-//         "#4F46E5",
+//         "#6D28D9",
 //       justifyContent:
 //         "center",
 //       alignItems:
@@ -2585,7 +2585,7 @@ submitTestRef.current = submitTest;
 
         <ActivityIndicator
           size="large"
-          color="#4F46E5"
+          color="#6D28D9"
         />
 
         <Text
@@ -3255,7 +3255,7 @@ const styles =
 
     retryButton: {
       backgroundColor:
-        "#4F46E5",
+        "#6D28D9",
       paddingHorizontal: 30,
       paddingVertical: 13,
       borderRadius: 10,
@@ -3343,7 +3343,7 @@ const styles =
       paddingVertical: 8,
       borderRadius: 9,
       backgroundColor:
-        "#EEF2FF",
+        "#F0E9FF",
       flexDirection:
         "row",
       alignItems:
@@ -3389,7 +3389,7 @@ const styles =
     progressFill: {
       height: 5,
       backgroundColor:
-        "#4F46E5",
+        "#6D28D9",
       borderRadius: 5,
     },
 
@@ -3525,8 +3525,8 @@ const styles =
     },
 
     paletteQuestionCurrent: {
-      backgroundColor: "#4F46E5",
-      borderColor: "#4F46E5",
+      backgroundColor: "#6D28D9",
+      borderColor: "#6D28D9",
       borderWidth: 2,
     },
 
@@ -3639,7 +3639,7 @@ const styles =
     },
 
     paletteOpenIcon: {
-      color: "#4F46E5",
+      color: "#6D28D9",
       fontSize: 17,
       fontWeight: "800",
       marginRight: 6,
@@ -3655,7 +3655,7 @@ const styles =
       alignSelf:
         "flex-start",
       backgroundColor:
-        "#EEF2FF",
+        "#F0E9FF",
       paddingHorizontal: 12,
       paddingVertical: 7,
       borderRadius: 8,
@@ -3718,9 +3718,9 @@ const styles =
 
     optionSelected: {
       borderColor:
-        "#4F46E5",
+        "#6D28D9",
       backgroundColor:
-        "#EEF2FF",
+        "#F0E9FF",
     },
 
     optionCircle: {
@@ -3739,9 +3739,9 @@ const styles =
 
     optionCircleSelected: {
       backgroundColor:
-        "#4F46E5",
+        "#6D28D9",
       borderColor:
-        "#4F46E5",
+        "#6D28D9",
     },
 
     optionLetter: {
@@ -3765,14 +3765,14 @@ const styles =
     },
 
     optionTextSelected: {
-      color: "#312E81",
+      color: "#5B21B6",
       fontWeight:
         "700",
     },
 
     check: {
       fontSize: 19,
-      color: "#4F46E5",
+      color: "#6D28D9",
       fontWeight:
         "800",
       marginLeft: 8,
@@ -3849,7 +3849,7 @@ const styles =
       paddingHorizontal: 20,
       borderRadius: 10,
       backgroundColor:
-        "#4F46E5",
+        "#6D28D9",
       justifyContent:
         "center",
       alignItems:

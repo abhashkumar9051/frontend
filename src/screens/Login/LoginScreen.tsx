@@ -771,7 +771,7 @@ const styles = StyleSheet.create({
   /* ================================================= */
 
   topSection: {
-    backgroundColor: "#4F46E5",
+    backgroundColor: "#6D28D9",
     minHeight: 310,
     paddingHorizontal: 24,
     paddingTop: 25,
@@ -827,7 +827,7 @@ const styles = StyleSheet.create({
   logoLetter: {
     fontSize: 26,
     fontWeight: "900",
-    color: "#4F46E5",
+    color: "#6D28D9",
   },
 
 
@@ -1039,9 +1039,9 @@ const styles = StyleSheet.create({
 
 
   continueButtonActive: {
-    backgroundColor: "#4F46E5",
+    backgroundColor: "#6D28D9",
 
-    shadowColor: "#4F46E5",
+    shadowColor: "#6D28D9",
     shadowOffset: {
       width: 0,
       height: 5,
@@ -1197,7 +1197,7 @@ const styles = StyleSheet.create({
 
 
   termsLink: {
-    color: "#4F46E5",
+    color: "#6D28D9",
     fontWeight: "700",
   },
 

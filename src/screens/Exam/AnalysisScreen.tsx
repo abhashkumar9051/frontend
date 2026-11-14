@@ -602,7 +602,7 @@ const AnalysisScreen = ({
       >
         <ActivityIndicator
           size="large"
-          color="#4F46E5"
+          color="#6D28D9"
         />
 
         <Text
@@ -1622,7 +1622,7 @@ const styles =
     retryButton: {
       marginTop: 18,
       backgroundColor:
-        "#4F46E5",
+        "#6D28D9",
       paddingHorizontal: 25,
       paddingVertical: 12,
       borderRadius: 12,
@@ -1699,7 +1699,7 @@ const styles =
     summaryValue: {
       fontSize: 16,
       fontWeight: "900",
-      color: "#4F46E5",
+      color: "#6D28D9",
     },
 
     summaryLabel: {
@@ -1773,7 +1773,7 @@ const styles =
 
     tabButtonActive: {
       backgroundColor:
-        "#EEF2FF",
+        "#F0E9FF",
     },
 
     tabText: {
@@ -1784,7 +1784,7 @@ const styles =
     },
 
     tabTextActive: {
-      color: "#4F46E5",
+      color: "#6D28D9",
       fontWeight: "900",
     },
 
@@ -2045,7 +2045,7 @@ const styles =
       padding: 11,
       borderRadius: 11,
       backgroundColor:
-        "#EEF2FF",
+        "#F0E9FF",
       flexDirection:
         "row",
       justifyContent:
@@ -2095,13 +2095,13 @@ const styles =
       padding: 12,
       borderRadius: 11,
       backgroundColor:
-        "#EEF2FF",
+        "#F0E9FF",
     },
 
     explanationTitle: {
       fontSize: 10,
       fontWeight: "900",
-      color: "#312E81",
+      color: "#5B21B6",
     },
 
     explanationText: {
@@ -2117,7 +2117,7 @@ const styles =
       marginHorizontal: 16,
       marginTop: 6,
       backgroundColor:
-        "#4F46E5",
+        "#6D28D9",
       padding: 15,
       borderRadius: 14,
       alignItems:

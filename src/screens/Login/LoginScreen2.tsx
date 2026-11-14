@@ -476,7 +476,7 @@
 //   // ================= TOP =================
 
 //   topSection: {
-//     backgroundColor: "#4F46E5",
+//     backgroundColor: "#6D28D9",
 
 //     paddingHorizontal: 24,
 //     paddingTop: 24,
@@ -543,7 +543,7 @@
 //   },
 
 //   logoText: {
-//     color: "#4F46E5",
+//     color: "#6D28D9",
 //     fontSize: 25,
 //     fontWeight: "900",
 //   },
@@ -735,9 +735,9 @@
 //   },
 
 //   mobileButtonActive: {
-//     backgroundColor: "#4F46E5",
+//     backgroundColor: "#6D28D9",
 
-//     shadowColor: "#4F46E5",
+//     shadowColor: "#6D28D9",
 
 //     shadowOffset: {
 //       width: 0,
@@ -821,7 +821,7 @@
 
 //     paddingHorizontal: 12,
 
-//     shadowColor: "#4F46E5",
+//     shadowColor: "#6D28D9",
 //     shadowOffset: {
 //       width: 0,
 //       height: 3,
@@ -886,14 +886,14 @@
 
 //     borderRadius: 11,
 
-//     backgroundColor: "#EEF2FF",
+//     backgroundColor: "#F0E9FF",
 
 //     justifyContent: "center",
 //     alignItems: "center",
 //   },
 
 //   googleArrow: {
-//     color: "#4F46E5",
+//     color: "#6D28D9",
 //     fontSize: 18,
 //     fontWeight: "700",
 //   },
@@ -963,7 +963,7 @@
 //   },
 
 //   termsLink: {
-//     color: "#4F46E5",
+//     color: "#6D28D9",
 //     fontWeight: "700",
 //   },
 

@@ -30,7 +30,8 @@ import {
   TestSeries,
 } from "../../services/examService";
 import { API_BASE_URL } from "../../config/api";
-import { getToken } from "../../services/authService";
+import { getSavedUser, getToken } from "../../services/authService";
+import { getCachedJson } from "../../services/queryCache";
 
 type Props =
   NativeStackScreenProps<
@@ -182,13 +183,8 @@ const TestSeriesDetailScreen = ({
         // ==================================
 
         const token = await getToken();
-        const response = await fetch(
-          `${API_URL}/api/v1/series/${seriesId}/tests`,
-          { headers: token ? { Authorization: `Bearer ${token}` } : {} }
-        );
-
-        const data =
-          await response.json();
+        const savedUser = await getSavedUser();
+        const data = await getCachedJson<any>(`user:${savedUser?.id || "signed-in"}:series-tests:${seriesId}`, `${API_URL}/api/v1/series/${seriesId}/tests`, token);
 
         console.log(
           "SERIES TESTS RESPONSE:",
@@ -198,13 +194,6 @@ const TestSeriesDetailScreen = ({
             2
           )
         );
-
-        if (!response.ok) {
-          throw new Error(
-            data?.message ||
-              "Unable to fetch tests."
-          );
-        }
 
         // ==================================
         // SERIES
@@ -291,7 +280,7 @@ const TestSeriesDetailScreen = ({
             description: "",
             logo: "",
             icon: "📚",
-            color: "#4F46E5",
+            color: "#6D28D9",
           });
         }
 
@@ -388,7 +377,7 @@ const TestSeriesDetailScreen = ({
         currency: orderData.order.currency,
         name: "Test Series",
         description: `${orderData.examName || series?.title || subject?.name || "Exam"} full exam premium`,
-        theme: { color: "#4F46E5" },
+        theme: { color: "#6D28D9" },
       });
 
       const verifyResponse = await fetch(`${API_BASE_URL}/api/v1/payment/verify`, {
@@ -442,7 +431,7 @@ const TestSeriesDetailScreen = ({
       >
         <ActivityIndicator
           size="large"
-          color="#4F46E5"
+          color="#6D28D9"
         />
 
         <Text
@@ -601,7 +590,7 @@ const TestSeriesDetailScreen = ({
               onPress={buyExamPremium}
               disabled={buyingPremium}
               activeOpacity={0.85}
-              style={{ marginTop: 16, paddingHorizontal: 22, paddingVertical: 12, borderRadius: 12, backgroundColor: "#4F46E5", flexDirection: "row", alignItems: "center", justifyContent: "center" }}
+              style={{ marginTop: 16, paddingHorizontal: 22, paddingVertical: 12, borderRadius: 12, backgroundColor: "#6D28D9", flexDirection: "row", alignItems: "center", justifyContent: "center" }}
             >
               {buyingPremium ? <ActivityIndicator color="#FFFFFF" /> : <Text style={{ color: "#FFFFFF", fontWeight: "800" }}>Buy Premium Access</Text>}
             </TouchableOpacity>
@@ -1023,7 +1012,7 @@ const styles =
     hero: {
       margin: 16,
       backgroundColor:
-        "#312E81",
+        "#5B21B6",
       borderRadius: 21,
       padding: 19,
     },
@@ -1085,7 +1074,7 @@ const styles =
     },
 
     active: {
-      color: "#4F46E5",
+      color: "#6D28D9",
       fontWeight: "900",
       fontSize: 11,
     },
@@ -1123,7 +1112,7 @@ const styles =
       height: 35,
       borderRadius: 18,
       backgroundColor:
-        "#EEF2FF",
+        "#F0E9FF",
       justifyContent:
         "center",
       alignItems: "center",
@@ -1131,7 +1120,7 @@ const styles =
     },
 
     numberText: {
-      color: "#4F46E5",
+      color: "#6D28D9",
       fontWeight: "900",
     },
 
@@ -1233,7 +1222,7 @@ const styles =
 
     retryBtn: {
       backgroundColor:
-        "#4F46E5",
+        "#6D28D9",
       paddingHorizontal: 18,
       paddingVertical: 10,
       borderRadius: 9,
@@ -1251,7 +1240,7 @@ const styles =
       padding: 15,
       borderRadius: 17,
       backgroundColor:
-        "#312E81",
+        "#5B21B6",
       flexDirection: "row",
       alignItems: "center",
     },

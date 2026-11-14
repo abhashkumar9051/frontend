@@ -81,6 +81,10 @@ const authSlice = createSlice({
       state.initialRoute = "Home";
     },
 
+    profileUpdated: (state, action: PayloadAction<Partial<User>>) => {
+      if (state.user) state.user = { ...state.user, ...action.payload };
+    },
+
     // restoreSession: (
     //   state,
     //   action: PayloadAction<{
@@ -117,6 +121,7 @@ const authSlice = createSlice({
 export const {
   loginSuccess,
   logout,
+  profileUpdated,
   restoreSession,
   finishLoading,
 } = authSlice.actions;

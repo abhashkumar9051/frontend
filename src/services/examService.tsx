@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "../config/api";
+import { queryCached } from "./queryCache";
 
 const API_URL = API_BASE_URL;
 
@@ -109,7 +110,7 @@ export interface ExamDetails {
 // ==========================================
 
 export const getExams =
-  async (): Promise<Exam[]> => {
+  (forceRefresh = false): Promise<Exam[]> => queryCached("public:exams", async () => {
     const response = await fetch(
       `${API_URL}/api/v1/exams`
     );
@@ -123,16 +124,17 @@ export const getExams =
       );
     }
 
-    return data.exams;
-  };
+    return Array.isArray(data.exams) ? data.exams : [];
+  }, forceRefresh);
 
 // ==========================================
 // GET SINGLE EXAM + SUBJECTS + SERIES
 // ==========================================
 
-export const getExamById = async (
-  examId: string
-): Promise<ExamDetails> => {
+export const getExamById = (
+  examId: string,
+  forceRefresh = false
+): Promise<ExamDetails> => queryCached(`public:exam:${examId}`, async () => {
   const response = await fetch(
     `${API_URL}/api/v1/exams/${examId}`
   );
@@ -155,4 +157,4 @@ export const getExamById = async (
       ? Number(data.testCount)
       : undefined,
   };
-};
+}, forceRefresh);

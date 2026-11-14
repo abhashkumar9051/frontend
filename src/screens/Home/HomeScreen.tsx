@@ -11,7 +11,6 @@ import React, {
 import {
   ActivityIndicator,
   RefreshControl,
-  SafeAreaView,
   View,
   Text,
   StyleSheet,
@@ -20,6 +19,7 @@ import {
   TouchableOpacity,
   StatusBar,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
@@ -31,8 +31,11 @@ import type { AppStackParamList } from "../../navigation/AppNavigator";
 import {
   Exam,
   getExams,
+  getExamById,
 } from "../../services/examService";
 import { API_BASE_URL } from "../../config/api";
+import BottomTabBar from "../../components/BottomTabBar";
+import { getCachedJson } from "../../services/queryCache";
 
 type Props = NativeStackScreenProps<
   AppStackParamList,
@@ -268,14 +271,17 @@ useEffect(() => {
           `API: ${API_BASE_URL}/api/v1/exams`
         );
 
-        const data = await getExams();
+        const data = await getExams(isRefresh);
 
         console.log(
           "EXAMS RECEIVED:",
           JSON.stringify(data, null, 2)
         );
 
-        setExams(Array.isArray(data) ? data : []);
+        const availableExams = Array.isArray(data) ? data : [];
+        setExams(availableExams);
+        // Warm exam/series destinations after the Home transition settles.
+        setTimeout(() => { void prefetchExamDestinations(availableExams); }, 350);
       } catch (error: any) {
         console.log(
           "FETCH EXAMS ERROR:",
@@ -293,6 +299,42 @@ useEffect(() => {
     },
     []
   );
+
+  const prefetchExamDestinations = async (availableExams: Exam[]) => {
+    const token = await getToken();
+    const details: Array<Awaited<ReturnType<typeof getExamById>> | undefined> = [];
+    for (let index = 0; index < availableExams.length; index += 3) {
+      details.push(...await Promise.all(availableExams.slice(index, index + 3).map((exam) => getExamById(exam._id).catch(() => undefined))));
+    }
+    const seriesIds = [...new Set(details.flatMap((detail) => detail?.series || []).map((series) => series._id))];
+    // Keep network pressure bounded while preparing all series lists.
+    for (let index = 0; index < seriesIds.length; index += 3) {
+      await Promise.all(seriesIds.slice(index, index + 3).map((seriesId) =>
+        getCachedJson(`user:${user?.id || "signed-in"}:series-tests:${seriesId}`, `${API_BASE_URL}/api/v1/series/${seriesId}/tests`, token)
+          .catch(() => undefined)
+      ));
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    const task = setTimeout(() => {
+      void (async () => {
+        const token = await getToken();
+        if (cancelled || !token) return;
+        const userKey = user?.id || "signed-in";
+        const warm = [
+          getCachedJson(`user:${userKey}:profile`, `${API_BASE_URL}/api/v1/auth/me`, token),
+          getCachedJson(`user:${userKey}:entitlements`, `${API_BASE_URL}/api/v1/payment/entitlements`, token),
+          getCachedJson(`user:${userKey}:leaderboard:all`, `${API_BASE_URL}/api/v1/community/leaderboard`, token),
+          getCachedJson(`user:${userKey}:inbox`, `${API_BASE_URL}/api/v1/community/messages`, token),
+          getCachedJson(`user:${userKey}:recent-attempts:10`, `${API_BASE_URL}/api/v1/attempts/recent?limit=10`, token),
+        ];
+        await Promise.all(warm.map((request) => request.catch(() => undefined)));
+      })();
+    }, 700);
+    return () => { cancelled = true; clearTimeout(task); };
+  }, [user?.id]);
 
   // =====================================================
   // INITIAL LOAD
@@ -399,6 +441,16 @@ useEffect(() => {
     ];
   };
 
+  const getExamCardStyle = (index: number) => {
+    const cardStyles = [
+      styles.examCardLavender,
+      styles.examCardBlue,
+      styles.examCardAmber,
+      styles.examCardMint,
+    ];
+    return cardStyles[index % cardStyles.length];
+  };
+
   // =====================================================
   // EXAM CLICK
   // =====================================================
@@ -467,11 +519,12 @@ useEffect(() => {
     return (
       <TouchableOpacity
         key={exam._id}
-        style={styles.categoryCard}
+        style={[styles.categoryCard, getExamCardStyle(index)]}
         activeOpacity={0.8}
         onPress={() =>
           handleExamPress(exam)
         }
+        onPressIn={() => { void getExamById(exam._id).catch(() => undefined); }}
       >
         <View
           style={[
@@ -517,12 +570,14 @@ useEffect(() => {
   return (
     <SafeAreaView
       style={styles.safeArea}
+      edges={["top", "left", "right"]}
     >
       <StatusBar
         barStyle="light-content"
       />
 
       <ScrollView
+        style={styles.mainScrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={
           styles.scrollContent
@@ -546,41 +601,22 @@ useEffect(() => {
         ================================================= */}
 
         <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Text
-              style={styles.welcomeText}
-            >
-              Welcome back 👋
-            </Text>
-
-            <Text
-              style={styles.userName}
-            >
-              {userName}
-            </Text>
-
-            <Text
-              style={styles.headerSubtitle}
-            >
-              Keep learning, keep growing!
-            </Text>
+          <View style={styles.brandRow}>
+            <Text style={styles.brandIcon}>🎓</Text>
+            <View style={styles.brandCopy}>
+              <Text style={styles.brandName}>GenZExam</Text>
+              <Text style={styles.brandTagline}>Test Series · Practice · Succeed</Text>
+            </View>
+            <TouchableOpacity style={styles.profileButton} activeOpacity={0.8} onPress={() => navigation.navigate("Profile")}>
+              <Text style={styles.profileText}>{profileLetter}</Text>
+            </TouchableOpacity>
           </View>
-
-          <TouchableOpacity
-            style={styles.profileButton}
-            activeOpacity={0.8}
-            onPress={() =>
-              navigation.navigate(
-                "Profile"
-              )
-            }
-          >
-            <Text
-              style={styles.profileText}
-            >
-              {profileLetter}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.welcomeBlock}>
+            <Text style={styles.welcomeText}>Welcome back, 👋</Text>
+            <Text style={styles.userName} numberOfLines={1}>{userName}</Text>
+            <Text style={styles.headerSubtitle}>Keep learning, keep growing!</Text>
+          </View>
+          <Text style={styles.heroDecoration}>📚</Text>
         </View>
 
         {/* =================================================
@@ -614,7 +650,7 @@ useEffect(() => {
         <View
           style={styles.statsContainer}
         >
-          <View style={styles.statCard}>
+          <View style={[styles.statCard, styles.statCardLavender]}>
             <Text
               style={styles.statIcon}
             >
@@ -634,7 +670,7 @@ useEffect(() => {
             </Text>
           </View>
 
-          <View style={styles.statCard}>
+          <View style={[styles.statCard, styles.statCardMint]}>
             <Text
               style={styles.statIcon}
             >
@@ -654,7 +690,7 @@ useEffect(() => {
             </Text>
           </View>
 
-          <View style={styles.statCard}>
+          <View style={[styles.statCard, styles.statCardAmber]}>
             <Text
               style={styles.statIcon}
             >
@@ -674,6 +710,28 @@ useEffect(() => {
             </Text>
           </View>
         </View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Continue Learning</Text>
+          <TouchableOpacity onPress={() => navigation.navigate("MyLearning")}><Text style={styles.seeAll}>See All  →</Text></TouchableOpacity>
+        </View>
+        {recentAttempts[0] ? (
+          <TouchableOpacity style={styles.continueCard} activeOpacity={0.85} onPress={() => openAttemptAnalysis(recentAttempts[0])}>
+            <View style={styles.continueIcon}><Text style={styles.continueEmoji}>▤</Text></View>
+            <View style={styles.continueCopy}>
+              <Text style={styles.continueTitle} numberOfLines={1}>{recentAttempts[0].testId.title}</Text>
+              <Text style={styles.continueMeta}>Latest attempt · {Math.round(recentAttempts[0].accuracy)}% accuracy</Text>
+              <View style={styles.continueProgress}><View style={[styles.continueProgressFill, { width: `${Math.max(0, Math.min(100, recentAttempts[0].accuracy))}%` }]} /></View>
+            </View>
+            <Text style={styles.continueArrow}>›</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={styles.continueCard} activeOpacity={0.85} onPress={handleSeeAllExams}>
+            <View style={styles.continueIcon}><Text style={styles.continueEmoji}>✎</Text></View>
+            <View style={styles.continueCopy}><Text style={styles.continueTitle}>Your first test is waiting</Text><Text style={styles.continueMeta}>Choose an exam and start practicing</Text></View>
+            <Text style={styles.continueArrow}>›</Text>
+          </TouchableOpacity>
+        )}
 
         {/* =================================================
             EXPLORE EXAMS
@@ -711,7 +769,7 @@ useEffect(() => {
           >
             <ActivityIndicator
               size="small"
-              color="#4F46E5"
+              color="#6D28D9"
             />
 
             <Text
@@ -836,20 +894,6 @@ useEffect(() => {
             DEBUG INFO
         ================================================= */}
 
-        {!isLoading &&
-          !error && (
-            <Text
-              style={styles.examCount}
-            >
-              {filteredExams.length} exam
-              {filteredExams.length !==
-              1
-                ? "s"
-                : ""}{" "}
-              available
-            </Text>
-          )}
-
         {/* =================================================
             FEATURED TEST
         ================================================= */}
@@ -877,6 +921,7 @@ useEffect(() => {
                 {featuredTest.series.subjectId?.name || featuredTest.series.title}
               </Text>
             </View>
+            <Text style={styles.featuredDecoration}>📝</Text>
 
             <Text style={styles.featuredTitle}>
               {featuredTest.test.title}
@@ -915,225 +960,11 @@ useEffect(() => {
           </View>
         )}
 
-        {/* =================================================
-            QUICK ACCESS
-        ================================================= */}
-
-        <Text
-          style={[
-            styles.sectionTitle,
-            styles.quickTitle,
-          ]}
-        >
-          Quick Access
-        </Text>
-
-        <View
-          style={styles.quickGrid}
-        >
-          <TouchableOpacity
-            style={styles.quickCard}
-            onPress={handleSeeAllExams}
-          >
-            <View
-              style={styles.quickIcon}
-            >
-              <Text
-                style={
-                  styles.quickEmoji
-                }
-              >
-                📖
-              </Text>
-            </View>
-
-            <Text
-              style={
-                styles.quickCardTitle
-              }
-            >
-              Browse Tests
-            </Text>
-
-            <Text
-              style={
-                styles.quickCardSubtitle
-              }
-            >
-              Choose an exam
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.quickCard}
-            disabled={recentAttempts.length === 0}
-            onPress={() => {
-              if (recentAttempts[0]) {
-                openAttemptAnalysis(recentAttempts[0]);
-              }
-            }}
-          >
-            <View
-              style={styles.quickIcon}
-            >
-              <Text
-                style={
-                  styles.quickEmoji
-                }
-              >
-                📊
-              </Text>
-            </View>
-
-            <Text
-              style={
-                styles.quickCardTitle
-              }
-            >
-              My Results
-            </Text>
-
-            <Text
-              style={
-                styles.quickCardSubtitle
-              }
-            >
-              {recentAttempts.length > 0 ? "Open latest result" : "No results yet"}
-            </Text>
-          </TouchableOpacity>
-
-        </View>
-
-        {/* =================================================
-            RECENT TESTS
-        ================================================= */}
-
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent Tests</Text>
-          {recentAttempts[0] && (
-            <TouchableOpacity
-              onPress={() => openAttemptAnalysis(recentAttempts[0])}
-            >
-              <Text style={styles.seeAll}>Latest Result</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {recentLoading ? (
-          <View style={styles.emptyHomeCard}>
-            <ActivityIndicator color="#4F46E5" />
-          </View>
-        ) : recentAttempts.length === 0 ? (
-          <View style={styles.emptyHomeCard}>
-            <Text style={styles.emptyHomeText}>
-              You have not completed a test yet.
-            </Text>
-          </View>
-        ) : (
-          recentAttempts.map((attempt) => {
-            const accuracy = Math.max(
-              0,
-              Math.min(100, Number(attempt.accuracy) || 0)
-            );
-
-            return (
-              <TouchableOpacity
-                key={attempt._id}
-                style={styles.recentCard}
-                activeOpacity={0.85}
-                onPress={() => openAttemptAnalysis(attempt)}
-              >
-                <View style={styles.recentIcon}>
-                  <Text style={styles.recentEmoji}>📝</Text>
-                </View>
-
-                <View style={styles.recentContent}>
-                  <Text style={styles.recentTitle} numberOfLines={1}>
-                    {attempt.testId.title}
-                  </Text>
-                  <Text style={styles.recentSubtitle} numberOfLines={1}>
-                    {attempt.subjectId?.name || "Exam practice"} · {attempt.totalQuestions} questions
-                  </Text>
-                  <View style={styles.progressBackground}>
-                    <View
-                      style={[
-                        styles.progressFill,
-                        { width: `${accuracy}%` },
-                      ]}
-                    />
-                  </View>
-                </View>
-
-                <View style={styles.scoreContainer}>
-                  <Text style={styles.score}>{Math.round(accuracy)}%</Text>
-                  <Text style={styles.scoreLabel}>Accuracy</Text>
-                </View>
-              </TouchableOpacity>
-            );
-          })
-        )}
-
-        {/* =================================================
-            DAILY GOAL
-        ================================================= */}
-
-        <View
-          style={styles.motivationCard}
-        >
-          <Text
-            style={styles.motivationEmoji}
-          >
-            🚀
-          </Text>
-
-          <View
-            style={
-              styles.motivationContent
-            }
-          >
-            <Text
-              style={
-                styles.motivationTitle
-              }
-            >
-              Your daily goal
-            </Text>
-
-            <Text
-              style={
-                styles.motivationText
-              }
-            >
-              Attempt {DAILY_QUESTION_GOAL} questions today
-            </Text>
-
-            <View
-              style={
-                styles.goalBackground
-              }
-            >
-              <View
-                style={[
-                  styles.goalProgress,
-                  { width: `${dailyGoalProgress}%` },
-                ]}
-              />
-            </View>
-
-            <Text
-              style={styles.goalText}
-            >
-              {statsLoading
-                ? "Loading today's progress..."
-                : `${stats.questionsToday} / ${DAILY_QUESTION_GOAL} questions attempted today`}
-            </Text>
-          </View>
-        </View>
-
         <View
           style={styles.bottomSpace}
         />
       </ScrollView>
+      <BottomTabBar navigation={navigation} active="Home" />
     </SafeAreaView>
   );
 };
@@ -1147,8 +978,10 @@ export default HomeScreen;
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: "#5B21B6",
   },
+
+  mainScrollView: { backgroundColor: "#F8FAFC" },
 
   scrollContent: {
     paddingBottom: 30,
@@ -1157,50 +990,88 @@ const styles = StyleSheet.create({
   // HEADER
 
   header: {
-    backgroundColor: "#4F46E5",
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 75,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
+    backgroundColor: "#5B21B6",
+    paddingHorizontal: 23,
+    paddingTop: 14,
+    paddingBottom: 58,
+    borderBottomLeftRadius: 34,
+    borderBottomRightRadius: 34,
+    overflow: "hidden",
   },
 
-  headerLeft: {
+  brandRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  brandIcon: {
+    fontSize: 31,
+    marginRight: 10,
+  },
+
+  brandCopy: {
     flex: 1,
   },
 
+  brandName: {
+    color: "#FFFFFF",
+    fontSize: 22,
+    fontWeight: "900",
+    letterSpacing: -0.5,
+  },
+
+  brandTagline: {
+    color: "#E9D5FF",
+    fontSize: 10,
+    marginTop: 1,
+  },
+
+  welcomeBlock: {
+    marginTop: 27,
+    maxWidth: "82%",
+    zIndex: 1,
+  },
+
+  heroDecoration: {
+    position: "absolute",
+    right: 23,
+    bottom: 31,
+    fontSize: 63,
+    opacity: 0.92,
+  },
+
   welcomeText: {
-    color: "#C7D2FE",
-    fontSize: 14,
-    marginBottom: 5,
+    color: "#F0E7FF",
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 4,
   },
 
   userName: {
     color: "#FFFFFF",
-    fontSize: 27,
+    fontSize: 29,
     fontWeight: "800",
+    letterSpacing: -0.5,
+    maxWidth: "100%",
   },
 
   headerSubtitle: {
-    color: "#E0E7FF",
+    color: "#E9D5FF",
     fontSize: 13,
     marginTop: 5,
   },
 
   profileButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: "#FFFFFF",
     justifyContent: "center",
     alignItems: "center",
   },
 
   profileText: {
-    color: "#4F46E5",
+    color: "#6D28D9",
     fontSize: 20,
     fontWeight: "800",
   },
@@ -1208,11 +1079,11 @@ const styles = StyleSheet.create({
   // SEARCH
 
   searchContainer: {
-    height: 55,
+    height: 58,
     backgroundColor: "#FFFFFF",
-    borderRadius: 15,
-    marginHorizontal: 20,
-    marginTop: -28,
+    borderRadius: 20,
+    marginHorizontal: 18,
+    marginTop: -27,
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
@@ -1220,11 +1091,11 @@ const styles = StyleSheet.create({
     shadowColor: "#000000",
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 7,
     },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 5,
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    elevation: 7,
   },
 
   searchIcon: {
@@ -1242,44 +1113,71 @@ const styles = StyleSheet.create({
 
   statsContainer: {
     flexDirection: "row",
-    paddingHorizontal: 20,
-    marginTop: 20,
+    paddingHorizontal: 15,
+    marginTop: 21,
   },
 
   statCard: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 15,
-    paddingVertical: 14,
-    alignItems: "center",
+    borderRadius: 20,
+    paddingVertical: 15,
+    paddingHorizontal: 5,
+    alignItems: "flex-start",
     marginHorizontal: 4,
-
-    shadowColor: "#000000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 2,
+    paddingLeft: 13,
   },
 
+  statCardLavender: { backgroundColor: "#F0E9FF" },
+  statCardMint: { backgroundColor: "#E3F8EE" },
+  statCardAmber: { backgroundColor: "#FFF2E3" },
+
   statIcon: {
-    fontSize: 20,
-    marginBottom: 5,
+    fontSize: 21,
+    marginBottom: 8,
   },
 
   statNumber: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#111827",
+    fontSize: 22,
+    fontWeight: "900",
+    color: "#14182D",
   },
 
   statLabel: {
     fontSize: 10,
-    color: "#6B7280",
-    marginTop: 3,
+    color: "#4B536B",
+    marginTop: 2,
   },
+
+  continueCard: {
+    marginHorizontal: 20,
+    minHeight: 100,
+    padding: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 22,
+    elevation: 3,
+    shadowColor: "#25204A",
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+  },
+  continueIcon: {
+    width: 54,
+    height: 60,
+    borderRadius: 17,
+    backgroundColor: "#F0E8FF",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  continueEmoji: { color: "#7C3AED", fontSize: 29, fontWeight: "800" },
+  continueCopy: { flex: 1, minWidth: 0 },
+  continueTitle: { color: "#17172E", fontSize: 14, fontWeight: "800" },
+  continueMeta: { color: "#68728A", fontSize: 11, marginTop: 6 },
+  continueProgress: { height: 5, backgroundColor: "#ECEAF2", borderRadius: 5, marginTop: 9, overflow: "hidden" },
+  continueProgressFill: { height: "100%", backgroundColor: "#8B3FE4", borderRadius: 5 },
+  continueArrow: { color: "#7C3AED", fontSize: 28, fontWeight: "400", marginLeft: 8 },
 
   // SECTION
 
@@ -1299,7 +1197,7 @@ const styles = StyleSheet.create({
   },
 
   seeAll: {
-    color: "#4F46E5",
+    color: "#6D28D9",
     fontSize: 13,
     fontWeight: "700",
   },
@@ -1341,7 +1239,7 @@ const styles = StyleSheet.create({
   },
 
   retryButton: {
-    backgroundColor: "#4F46E5",
+    backgroundColor: "#6D28D9",
     paddingHorizontal: 18,
     paddingVertical: 9,
     borderRadius: 10,
@@ -1390,25 +1288,21 @@ const styles = StyleSheet.create({
   },
 
   categoryCard: {
-    width: 120,
-    minHeight: 135,
+    width: 132,
+    minHeight: 148,
     backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    paddingVertical: 14,
+    borderRadius: 22,
+    paddingVertical: 15,
     paddingHorizontal: 8,
     alignItems: "center",
     justifyContent: "center",
     marginHorizontal: 5,
-
-    shadowColor: "#000000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 2,
   },
+
+  examCardLavender: { backgroundColor: "#F2E9FF" },
+  examCardBlue: { backgroundColor: "#E4F2FF" },
+  examCardAmber: { backgroundColor: "#FFF0DF" },
+  examCardMint: { backgroundColor: "#E3F8EE" },
 
   categoryIcon: {
     width: 48,
@@ -1457,9 +1351,19 @@ const styles = StyleSheet.create({
 
   featuredCard: {
     marginHorizontal: 20,
-    backgroundColor: "#312E81",
-    borderRadius: 20,
+    backgroundColor: "#5524C7",
+    borderRadius: 24,
     padding: 20,
+    overflow: "hidden",
+    minHeight: 206,
+  },
+
+  featuredDecoration: {
+    position: "absolute",
+    right: 15,
+    top: 46,
+    fontSize: 63,
+    opacity: 0.3,
   },
 
   featuredTop: {
@@ -1476,7 +1380,7 @@ const styles = StyleSheet.create({
   },
 
   featuredBadgeText: {
-    color: "#4F46E5",
+    color: "#6D28D9",
     fontSize: 10,
     fontWeight: "800",
   },
@@ -1492,6 +1396,7 @@ const styles = StyleSheet.create({
     fontSize: 21,
     fontWeight: "800",
     marginTop: 18,
+    maxWidth: "83%",
   },
 
   featuredDescription: {
@@ -1526,13 +1431,13 @@ const styles = StyleSheet.create({
 
   startButton: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 12,
+    borderRadius: 15,
     paddingHorizontal: 15,
     paddingVertical: 11,
   },
 
   startButtonText: {
-    color: "#4F46E5",
+    color: "#6D28D9",
     fontSize: 12,
     fontWeight: "800",
   },
@@ -1573,7 +1478,7 @@ const styles = StyleSheet.create({
     width: 43,
     height: 43,
     borderRadius: 13,
-    backgroundColor: "#EEF2FF",
+    backgroundColor: "#F0E9FF",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 10,
@@ -1635,7 +1540,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 14,
-    backgroundColor: "#EEF2FF",
+    backgroundColor: "#F0E9FF",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
@@ -1671,7 +1576,7 @@ const styles = StyleSheet.create({
 
   progressFill: {
     height: "100%",
-    backgroundColor: "#4F46E5",
+    backgroundColor: "#6D28D9",
     borderRadius: 5,
   },
 
@@ -1697,7 +1602,7 @@ const styles = StyleSheet.create({
   motivationCard: {
     marginHorizontal: 20,
     marginTop: 18,
-    backgroundColor: "#EEF2FF",
+    backgroundColor: "#F0E9FF",
     borderRadius: 18,
     padding: 17,
     flexDirection: "row",
@@ -1716,7 +1621,7 @@ const styles = StyleSheet.create({
   motivationTitle: {
     fontSize: 15,
     fontWeight: "800",
-    color: "#312E81",
+    color: "#5B21B6",
   },
 
   motivationText: {
@@ -1735,7 +1640,7 @@ const styles = StyleSheet.create({
 
   goalProgress: {
     height: "100%",
-    backgroundColor: "#4F46E5",
+    backgroundColor: "#6D28D9",
     borderRadius: 6,
   },
 

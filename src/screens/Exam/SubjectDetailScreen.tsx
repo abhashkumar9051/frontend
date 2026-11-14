@@ -315,7 +315,7 @@ const SubjectDetailScreen = ({
       >
         <ActivityIndicator
           size="large"
-          color="#4F46E5"
+          color="#6D28D9"
         />
 
         <Text style={styles.muted}>
@@ -393,7 +393,7 @@ const SubjectDetailScreen = ({
     "Subject";
 
   const subjectColor =
-    subject.color || "#4F46E5";
+    subject.color || "#6D28D9";
 
   const subjectIcon =
     subject.icon || "📚";
@@ -734,7 +734,7 @@ const styles =
 
     primaryBtn: {
       backgroundColor:
-        "#4F46E5",
+        "#6D28D9",
       paddingHorizontal: 24,
       paddingVertical: 12,
       borderRadius: 10,
@@ -814,7 +814,7 @@ const styles =
 
     tag: {
       backgroundColor:
-        "#EEF2FF",
+        "#F0E9FF",
       paddingHorizontal: 9,
       paddingVertical: 4,
       borderRadius: 7,
@@ -822,7 +822,7 @@ const styles =
     },
 
     tagText: {
-      color: "#4F46E5",
+      color: "#6D28D9",
       fontSize: 9,
       fontWeight: "900",
     },
@@ -873,7 +873,7 @@ const styles =
     },
 
     active: {
-      color: "#4F46E5",
+      color: "#6D28D9",
       fontWeight: "900",
       fontSize: 11,
     },
@@ -916,8 +916,8 @@ const styles =
     },
 
     filterChipActive: {
-      borderColor: "#4F46E5",
-      backgroundColor: "#4F46E5",
+      borderColor: "#6D28D9",
+      backgroundColor: "#6D28D9",
     },
 
     filterText: {
@@ -960,7 +960,7 @@ const styles =
 
     refreshBtn: {
       backgroundColor:
-        "#EEF2FF",
+        "#F0E9FF",
       paddingHorizontal: 18,
       paddingVertical: 9,
       borderRadius: 9,
@@ -968,7 +968,7 @@ const styles =
     },
 
     refreshBtnText: {
-      color: "#4F46E5",
+      color: "#6D28D9",
       fontWeight: "800",
       fontSize: 11,
     },
@@ -988,7 +988,7 @@ const styles =
 
     primaryCard: {
       backgroundColor:
-        "#312E81",
+        "#5B21B6",
       padding: 20,
       borderRadius: 21,
       marginBottom: 14,
@@ -1009,7 +1009,7 @@ const styles =
       width: 46,
       height: 46,
       borderRadius: 13,
-      backgroundColor: "#EEF2FF",
+      backgroundColor: "#F0E9FF",
       alignItems: "center",
       justifyContent: "center",
       marginRight: 12,
@@ -1105,7 +1105,7 @@ const styles =
     },
 
     priceDark: {
-      color: "#4F46E5",
+      color: "#6D28D9",
       fontSize: 14,
       fontWeight: "900",
       marginRight: 12,

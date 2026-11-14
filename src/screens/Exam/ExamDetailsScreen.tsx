@@ -32,7 +32,8 @@ import {
   Subject,
 } from "../../services/examService";
 import { API_BASE_URL } from "../../config/api";
-import { getToken } from "../../services/authService";
+import { getCachedJson } from "../../services/queryCache";
+import { getSavedUser, getToken } from "../../services/authService";
 
 type Props = NativeStackScreenProps<
   AppStackParamList,
@@ -297,9 +298,9 @@ const ExamDetailsScreen = ({
               ? examLevelSections[0]._id
               : null);
           try {
-            const response = await fetch(`${API_BASE_URL}/api/v1/series/${item._id}/tests`);
-            const result = await response.json();
-            if (!response.ok) return [sectionId, []] as const;
+            const token = await getToken();
+            const savedUser = await getSavedUser();
+            const result = await getCachedJson<any>(`user:${savedUser?.id || "signed-in"}:series-tests:${item._id}`, `${API_BASE_URL}/api/v1/series/${item._id}/tests`, token);
             const subjectId =
               item.subjectId && typeof item.subjectId === "object"
                 ? item.subjectId._id
@@ -396,7 +397,7 @@ const ExamDetailsScreen = ({
       >
         <ActivityIndicator
           size="large"
-          color="#4F46E5"
+          color="#6D28D9"
         />
 
         <Text
@@ -1102,7 +1103,7 @@ const SubjectRow = ({
           {
             backgroundColor:
               subject.color ||
-              "#EEF2FF",
+              "#F0E9FF",
           },
         ]}
       >
@@ -1407,7 +1408,7 @@ const styles =
 
     primaryBtn: {
       backgroundColor:
-        "#4F46E5",
+        "#6D28D9",
       paddingHorizontal: 20,
       paddingVertical: 13,
       borderRadius: 12,
@@ -1424,7 +1425,7 @@ const styles =
 
     hero: {
       backgroundColor:
-        "#312E81",
+        "#5B21B6",
       padding: 18,
       paddingBottom: 24,
       borderBottomLeftRadius:
@@ -1488,7 +1489,7 @@ const styles =
     logoText: {
       fontSize: 32,
       fontWeight: "900",
-      color: "#4F46E5",
+      color: "#6D28D9",
     },
 
     title: {
@@ -1602,7 +1603,7 @@ const styles =
 
     activeTab: {
       backgroundColor:
-        "#EEF2FF",
+        "#F0E9FF",
     },
 
     tabText: {
@@ -1612,7 +1613,7 @@ const styles =
     },
 
     activeTabText: {
-      color: "#4F46E5",
+      color: "#6D28D9",
     },
 
     // ======================================
@@ -1683,7 +1684,7 @@ const styles =
 
     infoValue: {
       fontSize: 9,
-      color: "#4F46E5",
+      color: "#6D28D9",
       marginTop: 3,
     },
 
@@ -1804,7 +1805,7 @@ const styles =
 
     largeSeries: {
       backgroundColor:
-        "#312E81",
+        "#5B21B6",
       padding: 17,
       borderRadius: 20,
       marginBottom: 12,
@@ -1869,7 +1870,7 @@ const styles =
     },
 
     fullBtnText: {
-      color: "#4F46E5",
+      color: "#6D28D9",
       fontWeight: "900",
       fontSize: 11,
     },
@@ -1895,7 +1896,7 @@ const styles =
 
     viewAllBtn: {
       backgroundColor:
-        "#EEF2FF",
+        "#F0E9FF",
       paddingVertical: 13,
       borderRadius: 12,
       alignItems:
@@ -1904,7 +1905,7 @@ const styles =
     },
 
     viewAllText: {
-      color: "#4F46E5",
+      color: "#6D28D9",
       fontSize: 11,
       fontWeight: "900",
     },

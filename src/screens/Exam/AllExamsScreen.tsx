@@ -24,12 +24,12 @@ const AllExamsScreen = ({ navigation }: Props) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const loadExams = useCallback(async () => {
+  const loadExams = useCallback(async (forceRefresh = false) => {
     try {
       setLoading(true);
       setError("");
 
-      const data = await getExams();
+      const data = await getExams(forceRefresh);
       setExams(Array.isArray(data) ? data : []);
     } catch (err: any) {
       setError(err?.message || "Exams load nahi ho paaye.");
@@ -99,13 +99,13 @@ const AllExamsScreen = ({ navigation }: Props) => {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#4F46E5" />
+          <ActivityIndicator size="large" color="#6D28D9" />
           <Text style={styles.infoText}>Exams load ho rahe hain...</Text>
         </View>
       ) : error ? (
         <View style={styles.center}>
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={loadExams}>
+          <TouchableOpacity style={styles.retryButton} onPress={() => loadExams(true)}>
             <Text style={styles.retryText}>Try Again</Text>
           </TouchableOpacity>
         </View>
@@ -159,7 +159,7 @@ const AllExamsScreen = ({ navigation }: Props) => {
             </TouchableOpacity>
           )}
           refreshing={loading}
-          onRefresh={loadExams}
+          onRefresh={() => loadExams(true)}
         />
       )}
     </SafeAreaView>
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 14,
-    backgroundColor: "#EDE9FE",
+    backgroundColor: "#F0E9FF",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 13,
@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
   backText: {
     fontSize: 32,
     lineHeight: 36,
-    color: "#4F46E5",
+    color: "#6D28D9",
   },
   headerTextContainer: {
     flex: 1,
@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   retryButton: {
-    backgroundColor: "#4F46E5",
+    backgroundColor: "#6D28D9",
     paddingHorizontal: 20,
     paddingVertical: 11,
     borderRadius: 10,

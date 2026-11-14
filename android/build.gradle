@@ -6,6 +6,10 @@ buildscript {
         targetSdkVersion = 36
         ndkVersion = "27.1.12297006"
         kotlinVersion = "2.2.0"
+        // Keep legacy in-app-browser dependencies reproducible; their defaults
+        // use dynamic versions that require Maven metadata during every build.
+        androidXAnnotationVersion = "1.9.1"
+        androidXBrowserVersion = "1.8.0"
     }
     repositories {
         google()

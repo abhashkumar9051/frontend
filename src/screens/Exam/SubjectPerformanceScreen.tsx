@@ -790,7 +790,7 @@ const SubjectPerformanceScreen = ({
 
         <ActivityIndicator
           size="large"
-          color="#4F46E5"
+          color="#6D28D9"
         />
 
         <Text
@@ -1574,7 +1574,7 @@ const styles =
     backButton: {
       marginTop: 20,
       backgroundColor:
-        "#4F46E5",
+        "#6D28D9",
       paddingHorizontal: 25,
       paddingVertical: 12,
       borderRadius: 12,
@@ -1620,7 +1620,7 @@ const styles =
     summary: {
       margin: 16,
       backgroundColor:
-        "#312E81",
+        "#5B21B6",
       borderRadius: 21,
       padding: 20,
       alignItems:
@@ -1716,7 +1716,7 @@ const styles =
     summaryValue: {
       fontSize: 16,
       fontWeight: "900",
-      color: "#4F46E5",
+      color: "#6D28D9",
     },
 
 
@@ -1773,7 +1773,7 @@ const styles =
 
     performanceScore: {
       backgroundColor:
-        "#EEF2FF",
+        "#F0E9FF",
     },
 
 
@@ -1917,7 +1917,7 @@ const styles =
       marginTop: 8,
       fontSize: 13,
       fontWeight: "900",
-      color: "#4F46E5",
+      color: "#6D28D9",
     },
 
 
@@ -1926,7 +1926,7 @@ const styles =
     primary: {
       margin: 16,
       backgroundColor:
-        "#4F46E5",
+        "#6D28D9",
       padding: 15,
       borderRadius: 14,
       alignItems:

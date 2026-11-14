@@ -234,7 +234,7 @@ const TestInstructionsScreen = ({
         currency: orderData.order.currency,
         name: "Test Series",
         description: `${orderData.examName || "Exam"} premium package`,
-        theme: { color: "#4F46E5" },
+        theme: { color: "#6D28D9" },
       });
 
       const verifyResponse = await fetch(`${API_BASE_URL}/api/v1/payment/verify`, {
@@ -286,7 +286,7 @@ const TestInstructionsScreen = ({
       <SafeAreaView style={styles.center}>
         <ActivityIndicator
           size="large"
-          color="#4F46E5"
+          color="#6D28D9"
         />
 
         <Text style={styles.loadingText}>
@@ -668,7 +668,7 @@ const styles = StyleSheet.create({
 
   backButton: {
     marginTop: 20,
-    backgroundColor: "#4F46E5",
+    backgroundColor: "#6D28D9",
     paddingHorizontal: 25,
     paddingVertical: 12,
     borderRadius: 12,
@@ -677,7 +677,7 @@ const styles = StyleSheet.create({
   buyPremiumButton: {
     minWidth: 230,
     marginTop: 18,
-    backgroundColor: "#4F46E5",
+    backgroundColor: "#6D28D9",
     paddingHorizontal: 25,
     paddingVertical: 14,
     borderRadius: 12,
@@ -713,7 +713,7 @@ const styles = StyleSheet.create({
   },
 
   hero: {
-    backgroundColor: "#312E81",
+    backgroundColor: "#5B21B6",
     borderRadius: 19,
     padding: 20,
     alignItems: "center",
@@ -820,8 +820,8 @@ const styles = StyleSheet.create({
   },
 
   checked: {
-    backgroundColor: "#4F46E5",
-    borderColor: "#4F46E5",
+    backgroundColor: "#6D28D9",
+    borderColor: "#6D28D9",
   },
 
   check: {
@@ -838,7 +838,7 @@ const styles = StyleSheet.create({
 
   start: {
     marginTop: 20,
-    backgroundColor: "#4F46E5",
+    backgroundColor: "#6D28D9",
     paddingVertical: 15,
     borderRadius: 14,
     alignItems: "center",
