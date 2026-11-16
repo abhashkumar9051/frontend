@@ -21,6 +21,7 @@ import LeaderboardScreen from "../screens/Community/LeaderboardScreen";
 import MessagesScreen from "../screens/Community/MessagesScreen";
 import InboxScreen from "../screens/Community/InboxScreen";
 import MyLearningScreen from "../screens/Community/MyLearningScreen";
+import JobsScreen from "../screens/Community/JobsScreen";
 export type AppStackParamList = {
   // ==========================================
   // HOME
@@ -31,6 +32,7 @@ export type AppStackParamList = {
 
   Profile: undefined;
   MyLearning: undefined;
+  Jobs: undefined;
   Leaderboard: { testId?: string } | undefined;
   Messages: { userId: string; name: string; profileImage?: string };
   Inbox: undefined;
@@ -178,6 +180,7 @@ const AppNavigator = ({
         component={ProfileScreen}
       />
       <Stack.Screen name="MyLearning" component={MyLearningScreen} />
+      <Stack.Screen name="Jobs" component={JobsScreen} />
       <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
       <Stack.Screen name="Messages" component={MessagesScreen} />
       <Stack.Screen name="Inbox" component={InboxScreen} />

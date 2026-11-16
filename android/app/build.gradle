@@ -133,6 +133,13 @@ dependencies {
 
 // Give the single universal release artifact a stable, app-specific filename.
 tasks.configureEach { task ->
+    // The APK is renamed after packaging, so Gradle's declared app-release.apk
+    // output no longer exists on the next run. Always package a fresh APK rather
+    // than treating that missing output as up-to-date and reusing an old file.
+    if (task.name == "packageRelease") {
+        task.outputs.upToDateWhen { false }
+    }
+
     if (task.name == "assembleRelease") {
         task.doLast {
             def releaseDir = file("$buildDir/outputs/apk/release")

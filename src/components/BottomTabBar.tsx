@@ -4,11 +4,12 @@ import type { NavigationProp } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { AppStackParamList } from "../navigation/AppNavigator";
 
-type TabName = "Home" | "MyLearning" | "Leaderboard" | "Inbox" | "Profile";
+type TabName = "Home" | "MyLearning" | "Jobs" | "Leaderboard" | "Inbox" | "Profile";
 type Props = { navigation: NavigationProp<AppStackParamList>; active: TabName };
 const tabs: Array<{ key: TabName; icon: string; title: string }> = [
   { key: "Home", icon: "⌂", title: "Home" },
   { key: "MyLearning", icon: "▤", title: "My learning" },
+  { key: "Jobs", icon: "▣", title: "Jobs" },
   { key: "Leaderboard", icon: "🏆", title: "Leaderboard" },
   { key: "Inbox", icon: "✉", title: "Messages" },
   { key: "Profile", icon: "◉", title: "Profile" },
@@ -29,7 +30,7 @@ const styles = StyleSheet.create({
   bar: { flexDirection: "row", alignItems: "center", justifyContent: "space-around", backgroundColor: "#fff", borderTopWidth: 1, borderTopColor: "#eceef4", paddingTop: 8, elevation: 14, shadowColor: "#1c2440", shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.07, shadowRadius: 12 },
   item: { flex: 1, minWidth: 0, alignItems: "center", justifyContent: "center", gap: 3, paddingHorizontal: 2, paddingVertical: 6, borderRadius: 14 },
   activeItem: { backgroundColor: "#F0E9FF" },
-  icon: { color: "#778198", fontSize: 21, lineHeight: 24 },
-  label: { color: "#778198", fontSize: 9, fontWeight: "600", textAlign: "center" },
+  icon: { color: "#778198", fontSize: 19, lineHeight: 22 },
+  label: { color: "#778198", fontSize: 8, fontWeight: "600", textAlign: "center" },
   selected: { color: "#6D28D9", fontWeight: "800" },
 });

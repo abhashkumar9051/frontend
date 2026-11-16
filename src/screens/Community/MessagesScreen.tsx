@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -32,6 +32,8 @@ type PickedImage = { uri: string; base64: string; mimeType: string };
 export default function MessagesScreen({ route, navigation }: Props) {
   const { userId, name } = route.params;
   const [messages, setMessages] = useState<Message[]>([]);
+  const listRef = useRef<FlatList<Message>>(null);
+  const scrollAfterSend = useRef(false);
   const [text, setText] = useState("");
   const [token, setToken] = useState("");
   const [loading, setLoading] = useState(true);
@@ -93,6 +95,7 @@ export default function MessagesScreen({ route, navigation }: Props) {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "Unable to send message.");
+      scrollAfterSend.current = true;
       setMessages((old) => [...old, { ...data.message, isMine: true }]);
       setText("");
       setPickedImage(null);
@@ -218,7 +221,12 @@ export default function MessagesScreen({ route, navigation }: Props) {
 
   return (
     <SafeAreaView style={s.container}>
-      <KeyboardAvoidingView style={s.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <KeyboardAvoidingView
+        style={s.flex}
+        // Android needs the same keyboard inset handling as iOS. Without it,
+        // the composer can remain underneath the soft keyboard on some devices.
+        behavior="padding"
+      >
         <View style={s.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}><Text style={s.back}>‹ Back</Text></TouchableOpacity>
           <View style={s.personHeader}>
@@ -228,8 +236,15 @@ export default function MessagesScreen({ route, navigation }: Props) {
         </View>
         {loading ? <ActivityIndicator color="#6D28D9" style={{ flex: 1 }} /> : (
           <FlatList
+            ref={listRef}
             style={s.flex}
             contentContainerStyle={s.messages}
+            onContentSizeChange={() => {
+              if (scrollAfterSend.current) {
+                scrollAfterSend.current = false;
+                listRef.current?.scrollToEnd({ animated: true });
+              }
+            }}
             data={messages}
             keyExtractor={(item) => item._id}
             renderItem={({ item }) => (
