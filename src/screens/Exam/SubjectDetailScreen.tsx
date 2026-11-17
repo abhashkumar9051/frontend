@@ -38,6 +38,7 @@ type SubjectTest = {
   name?: string;
   description?: string;
   totalQuestions?: number;
+  questionsCount?: number;
   questions?: number;
   durationMinutes?: number;
   duration?: number;
@@ -653,7 +654,7 @@ const SubjectDetailScreen = ({
                     {item.title || item.name || "Test Series"}
                   </Text>
                   <Text style={styles.seriesCompactMeta}>
-                    {item.tests.length} {item.tests.length === 1 ? "Test" : "Tests"} · {item.tests.reduce((total, test) => total + Number(test.totalQuestions ?? test.questions ?? 0), 0)} Questions
+                    {item.tests.length} {item.tests.length === 1 ? "Test" : "Tests"} · {item.tests.reduce((total, test) => total + Number(test.questionsCount ?? test.questions ?? test.totalQuestions ?? 0), 0)} Questions
                   </Text>
                 </View>
                 <Text style={styles.seriesCompactArrow}>›</Text>

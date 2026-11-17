@@ -51,6 +51,7 @@ interface Test {
   description?: string;
 
   questions?: number;
+  questionsCount?: number;
   totalQuestions?: number;
 
   duration?: number;
@@ -184,7 +185,7 @@ const TestSeriesDetailScreen = ({
 
         const token = await getToken();
         const savedUser = await getSavedUser();
-        const data = await getCachedJson<any>(`user:${savedUser?.id || "signed-in"}:series-tests:${seriesId}`, `${API_URL}/api/v1/series/${seriesId}/tests`, token);
+        const data = await getCachedJson<any>(`user:${savedUser?.id || "signed-in"}:series-tests:v2:${seriesId}`, `${API_URL}/api/v1/series/${seriesId}/tests`, token);
 
         console.log(
           "SERIES TESTS RESPONSE:",
@@ -465,7 +466,8 @@ const TestSeriesDetailScreen = ({
         test
       ) =>
         total +
-        (test.questions ??
+        (test.questionsCount ??
+          test.questions ??
           test.totalQuestions ??
           0),
       0
@@ -746,6 +748,7 @@ const TestSeriesDetailScreen = ({
               index
             ) => {
               const questionCount =
+                test.questionsCount ??
                 test.questions ??
                 test.totalQuestions ??
                 0;

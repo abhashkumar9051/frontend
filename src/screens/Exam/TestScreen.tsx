@@ -1754,7 +1754,6 @@ import {
   Alert,
   Image,
   Modal,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -1762,6 +1761,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { AppStackParamList } from "../../navigation/AppNavigator";
@@ -1828,6 +1828,7 @@ const TestScreen = ({
   navigation,
   route,
 }: Props) => {
+  const insets = useSafeAreaInsets();
   const { testId, subjectId } = route.params;
 
   /* ================================================= */
@@ -2694,6 +2695,7 @@ submitTestRef.current = submitTest;
   return (
     <SafeAreaView
       style={styles.safe}
+      edges={["top", "left", "right"]}
     >
       <StatusBar
         barStyle="dark-content"
@@ -2986,9 +2988,7 @@ submitTestRef.current = submitTest;
       {/* ============================================= */}
 
       <View
-        style={
-          styles.bottomBar
-        }
+        style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) + 8 }]}
       >
         <TouchableOpacity
           style={[

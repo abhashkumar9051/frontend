@@ -78,6 +78,7 @@ type FeaturedTest = {
     _id: string;
     title: string;
     totalQuestions?: number;
+    questionsCount?: number;
     durationMinutes?: number;
   };
   series: {
@@ -911,46 +912,64 @@ useEffect(() => {
           </View>
         ) : featuredTest ? (
           <View style={styles.featuredCard}>
+            <View style={styles.featuredGlow} />
             <View style={styles.featuredTop}>
               <View style={styles.featuredBadge}>
-                <Text style={styles.featuredBadgeText}>
-                  {featuredTest.series.type || "TEST"}
+                <Text style={styles.featuredBadgeIcon}>✣</Text>
+                <Text style={styles.featuredBadgeText} numberOfLines={1}>
+                  {featuredTest.series.subjectId?.name || featuredTest.series.type || "PRACTICE TEST"}
                 </Text>
               </View>
-              <Text style={styles.testLevel}>
-                {featuredTest.series.subjectId?.name || featuredTest.series.title}
-              </Text>
+              <Text style={styles.testLevel}>LATEST</Text>
             </View>
-            <Text style={styles.featuredDecoration}>📝</Text>
 
-            <Text style={styles.featuredTitle}>
-              {featuredTest.test.title}
-            </Text>
-
-            <Text style={styles.featuredDescription}>
-              {featuredTest.series.description || featuredTest.series.title}
-            </Text>
+            <View style={styles.featuredHero}>
+              <View style={styles.featuredCopy}>
+                <Text style={styles.featuredTitle}>
+                  {featuredTest.test.title}
+                </Text>
+                <Text style={styles.featuredDescription} numberOfLines={3}>
+                  {featuredTest.series.description || featuredTest.series.title}
+                </Text>
+              </View>
+              <View style={styles.featuredArtwork}>
+                <View style={styles.artworkScreen}>
+                  <Text style={styles.artworkAi}>AI</Text>
+                  <Text style={styles.artworkSpark}>✦</Text>
+                </View>
+                <View style={styles.artworkLaptopBase} />
+                <View style={styles.artworkBot}>
+                  <Text style={styles.artworkBotFace}>••</Text>
+                </View>
+                <Text style={styles.artworkBooks}>▰</Text>
+              </View>
+            </View>
 
             <View style={styles.testInfoRow}>
-              <Text style={styles.testInfo}>
-                📝 {featuredTest.test.totalQuestions ?? 0} Questions
-              </Text>
-              <Text style={styles.testInfo}>
-                ⏱ {featuredTest.test.durationMinutes ?? 0} Minutes
-              </Text>
+              <View style={styles.testInfoItem}>
+                <Text style={styles.testInfoIcon}>▤</Text>
+                <Text style={styles.testInfo}>{featuredTest.test.questionsCount ?? featuredTest.test.totalQuestions ?? 0} Questions</Text>
+              </View>
+              <View style={styles.testInfoDivider} />
+              <View style={styles.testInfoItem}>
+                <Text style={styles.testInfoIcon}>◷</Text>
+                <Text style={styles.testInfo}>{featuredTest.test.durationMinutes ?? 0} Minutes</Text>
+              </View>
+              <View style={styles.testInfoDivider} />
+              <View style={styles.testInfoItem}>
+                <Text style={styles.testInfoIcon}>★</Text>
+                <Text style={styles.testInfo}>Practice</Text>
+              </View>
             </View>
 
-            <View style={styles.featuredBottom}>
-              <Text style={styles.attemptText}>
-                {featuredTest.series.title}
-              </Text>
-              <TouchableOpacity
-                style={styles.startButton}
-                onPress={openFeaturedTest}
-              >
-                <Text style={styles.startButtonText}>Start Test →</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={styles.startButton}
+              onPress={openFeaturedTest}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.startButtonText}>▶  Start Test</Text>
+              <Text style={styles.startButtonArrow}>→</Text>
+            </TouchableOpacity>
           </View>
         ) : (
           <View style={styles.emptyHomeCard}>
@@ -1351,19 +1370,28 @@ const styles = StyleSheet.create({
 
   featuredCard: {
     marginHorizontal: 20,
-    backgroundColor: "#5524C7",
-    borderRadius: 24,
+    backgroundColor: "#5521C7",
+    borderRadius: 28,
     padding: 20,
     overflow: "hidden",
-    minHeight: 206,
+    borderWidth: 1,
+    borderColor: "#8B5CF6",
+    shadowColor: "#4C1D95",
+    shadowOffset: { width: 0, height: 9 },
+    shadowOpacity: 0.22,
+    shadowRadius: 15,
+    elevation: 7,
   },
 
-  featuredDecoration: {
+  featuredGlow: {
     position: "absolute",
-    right: 15,
-    top: 46,
-    fontSize: 63,
-    opacity: 0.3,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    right: -95,
+    top: 35,
+    backgroundColor: "#A82CE0",
+    opacity: 0.68,
   },
 
   featuredTop: {
@@ -1374,72 +1402,199 @@ const styles = StyleSheet.create({
 
   featuredBadge: {
     backgroundColor: "#FFFFFF",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 20,
+    maxWidth: "82%",
+  },
+
+  featuredBadgeIcon: {
+    color: "#C026D3",
+    fontSize: 16,
+    marginRight: 7,
   },
 
   featuredBadgeText: {
     color: "#6D28D9",
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "800",
   },
 
   testLevel: {
-    color: "#C7D2FE",
-    fontSize: 12,
+    color: "#E9D5FF",
+    fontSize: 9,
     fontWeight: "600",
+    letterSpacing: 1,
+  },
+
+  featuredHero: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 16,
+  },
+
+  featuredCopy: {
+    flex: 1,
+    minWidth: 0,
+    zIndex: 1,
+  },
+
+  featuredArtwork: {
+    width: 96,
+    height: 106,
+    marginLeft: 4,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  artworkScreen: {
+    width: 70,
+    height: 68,
+    borderRadius: 12,
+    borderWidth: 3,
+    borderColor: "#E9D5FF",
+    backgroundColor: "rgba(124,58,237,0.88)",
+    alignItems: "center",
+    justifyContent: "center",
+    transform: [{ rotate: "8deg" }],
+    shadowColor: "#FFFFFF",
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+  },
+
+  artworkAi: {
+    color: "#FFFFFF",
+    fontSize: 29,
+    fontWeight: "900",
+  },
+
+  artworkSpark: {
+    color: "#F5D0FE",
+    fontSize: 14,
+    position: "absolute",
+    top: 2,
+    right: 6,
+  },
+
+  artworkLaptopBase: {
+    width: 88,
+    height: 9,
+    borderRadius: 6,
+    backgroundColor: "#DDD6FE",
+    marginTop: 2,
+    transform: [{ skewX: "-18deg" }],
+  },
+
+  artworkBot: {
+    position: "absolute",
+    left: 0,
+    bottom: 17,
+    width: 32,
+    height: 25,
+    borderRadius: 14,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#C4B5FD",
+  },
+
+  artworkBotFace: {
+    color: "#6D28D9",
+    fontSize: 12,
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
+
+  artworkBooks: {
+    position: "absolute",
+    right: -1,
+    bottom: 13,
+    color: "#FDE68A",
+    fontSize: 26,
+    textShadowColor: "#7C3AED",
+    textShadowOffset: { width: 1, height: 2 },
+    textShadowRadius: 2,
   },
 
   featuredTitle: {
     color: "#FFFFFF",
-    fontSize: 21,
+    fontSize: 20,
     fontWeight: "800",
-    marginTop: 18,
-    maxWidth: "83%",
+    lineHeight: 25,
+    maxWidth: "100%",
   },
 
   featuredDescription: {
-    color: "#C7D2FE",
+    color: "#E9D5FF",
     fontSize: 12,
-    lineHeight: 19,
-    marginTop: 8,
+    lineHeight: 17,
+    marginTop: 7,
   },
 
   testInfoRow: {
     flexDirection: "row",
-    marginTop: 17,
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 14,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: "rgba(255,255,255,0.28)",
+  },
+
+  testInfoItem: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  testInfoDivider: {
+    width: 1,
+    height: 25,
+    backgroundColor: "rgba(255,255,255,0.32)",
   },
 
   testInfo: {
-    color: "#E0E7FF",
-    fontSize: 11,
-    marginRight: 20,
+    color: "#FFFFFF",
+    fontSize: 9,
+    fontWeight: "700",
+    flexShrink: 1,
   },
 
-  featuredBottom: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 20,
-  },
-
-  attemptText: {
-    color: "#C7D2FE",
-    fontSize: 10,
+  testInfoIcon: {
+    color: "#E9D5FF",
+    fontSize: 16,
+    marginRight: 5,
   },
 
   startButton: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 15,
-    paddingHorizontal: 15,
-    paddingVertical: 11,
+    borderRadius: 30,
+    minHeight: 54,
+    marginTop: 15,
+    paddingHorizontal: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
   },
 
   startButtonText: {
     color: "#6D28D9",
-    fontSize: 12,
-    fontWeight: "800",
+    fontSize: 17,
+    fontWeight: "900",
+  },
+
+  startButtonArrow: {
+    position: "absolute",
+    right: 20,
+    color: "#6D28D9",
+    fontSize: 22,
+    fontWeight: "700",
   },
 
   // QUICK ACCESS

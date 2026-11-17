@@ -361,15 +361,16 @@ const TestInstructionsScreen = ({
     test.questions ||
     0;
 
-  const totalMarks =
-    test.totalMarks ??
-    test.marks ??
-    questions.reduce(
-      (total, question) =>
-        total +
-        (question.marks ?? 0),
-      0
-    );
+  const questionTotalMarks = questions.reduce(
+    (total, question) => total + Number(question.marks ?? 0),
+    0,
+  );
+  const configuredTotalMarks = Number(test.totalMarks ?? test.marks ?? 0);
+  // Tests created before per-test marks were maintained can still have the
+  // schema default (0). In that case, use the sum of the question marks.
+  const totalMarks = configuredTotalMarks > 0
+    ? configuredTotalMarks
+    : questionTotalMarks;
 
   const questionMarks =
     totalQuestions > 0
