@@ -140,6 +140,7 @@ const ExamDetailsScreen = ({
         Alert.alert("Login required", "Please log in before purchasing this exam package.");
         return;
       }
+      const customer = await getSavedUser();
       const orderResponse = await fetch(`${API_BASE_URL}/api/v1/payment/create-order`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -160,6 +161,12 @@ const ExamDetailsScreen = ({
         currency: orderData.order.currency,
         name: "Test Series",
         description: `${examName} full premium package`,
+        prefill: {
+          name: customer?.name || undefined,
+          email: customer?.email || undefined,
+          contact: customer?.mobileNumber || undefined,
+          method: customer?.email && customer?.mobileNumber ? "card" : undefined,
+        },
         theme: { color: "#2563EB" },
       });
 

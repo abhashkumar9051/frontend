@@ -15,7 +15,7 @@ import RazorpayCheckout from "react-native-razorpay";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { AppStackParamList } from "../../navigation/AppNavigator";
 import { API_BASE_URL } from "../../config/api";
-import { getToken } from "../../services/authService";
+import { getSavedUser, getToken } from "../../services/authService";
 
 type Props = NativeStackScreenProps<
   AppStackParamList,
@@ -205,6 +205,7 @@ const TestInstructionsScreen = ({
         Alert.alert("Login required", "Please log in before purchasing premium access.");
         return;
       }
+      const customer = await getSavedUser();
 
       const orderResponse = await fetch(`${API_BASE_URL}/api/v1/payment/create-order`, {
         method: "POST",
@@ -234,6 +235,12 @@ const TestInstructionsScreen = ({
         currency: orderData.order.currency,
         name: "Test Series",
         description: `${orderData.examName || "Exam"} premium package`,
+        prefill: {
+          name: customer?.name || undefined,
+          email: customer?.email || undefined,
+          contact: customer?.mobileNumber || undefined,
+          method: customer?.email && customer?.mobileNumber ? "card" : undefined,
+        },
         theme: { color: "#6D28D9" },
       });
 
