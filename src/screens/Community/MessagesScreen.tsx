@@ -27,6 +27,7 @@ import RNFS from "react-native-fs";
 
 type Props = NativeStackScreenProps<AppStackParamList, "Messages">;
 type Message = { _id: string; text: string; isMine: boolean; fromUserId?: string; editedAt?: string | null; imageUrl?: string | null; imageMimeType?: string };
+type ChatPerson = { isOnline: boolean; lastSeenAt: string | null; isBlockedByMe: boolean; hasBlockedMe: boolean };
 type PickedImage = { uri: string; base64: string; mimeType: string };
 
 export default function MessagesScreen({ route, navigation }: Props) {
@@ -42,6 +43,9 @@ export default function MessagesScreen({ route, navigation }: Props) {
   const [editText, setEditText] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
   const [personImage, setPersonImage] = useState(route.params.profileImage || "");
+  const [person, setPerson] = useState<ChatPerson>({ isOnline: false, lastSeenAt: null, isBlockedByMe: false, hasBlockedMe: false });
+  const [updatingBlock, setUpdatingBlock] = useState(false);
+  const [chatMenuOpen, setChatMenuOpen] = useState(false);
   const [pickedImage, setPickedImage] = useState<PickedImage | null>(null);
   const [sending, setSending] = useState(false);
   const [selectedImage, setSelectedImage] = useState<Message | null>(null);
@@ -56,6 +60,7 @@ export default function MessagesScreen({ route, navigation }: Props) {
     if (mounted) {
       setMessages(data.messages || []);
       if (data.person?.profileImage) setPersonImage(data.person.profileImage);
+      setPerson({ isOnline: Boolean(data.person?.isOnline), lastSeenAt: data.person?.lastSeenAt || null, isBlockedByMe: Boolean(data.person?.isBlockedByMe), hasBlockedMe: Boolean(data.person?.hasBlockedMe) });
     }
   }, [userId]);
 
@@ -82,7 +87,7 @@ export default function MessagesScreen({ route, navigation }: Props) {
   }, [refresh]);
 
   const send = async () => {
-    if ((!text.trim() && !pickedImage) || !token || sending) return;
+    if ((!text.trim() && !pickedImage) || !token || sending || person.isBlockedByMe || person.hasBlockedMe) return;
     setSending(true);
     try {
       const image = pickedImage;
@@ -106,6 +111,54 @@ export default function MessagesScreen({ route, navigation }: Props) {
       setSending(false);
     }
   };
+
+  const toggleBlock = () => {
+    const shouldBlock = !person.isBlockedByMe;
+    if (shouldBlock && Platform.OS === "web") {
+      if (typeof window !== "undefined" && !window.confirm(`Block ${name}? Neither of you can exchange messages until you unblock them.`)) return;
+    }
+    const update = async () => {
+      setUpdatingBlock(true);
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/community/users/${userId}/block`, {
+          method: shouldBlock ? "POST" : "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || "Unable to update block settings.");
+        setPerson((current) => ({ ...current, isBlockedByMe: Boolean(data.isBlocked) }));
+      } catch (e) {
+        setError((e as Error).message || "Unable to update block settings.");
+      } finally { setUpdatingBlock(false); }
+    };
+    if (shouldBlock && Platform.OS !== "web") {
+      Alert.alert("Block this user?", "Neither of you can exchange messages until you unblock them.", [
+        { text: "Cancel", style: "cancel" },
+        { text: "Block", style: "destructive", onPress: () => { void update(); } },
+      ]);
+    } else void update();
+  };
+
+  const clearChat = () => {
+    Alert.alert("Clear chat?", "This removes messages from your account only. The other person will still have their copy.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Clear chat", style: "destructive", onPress: () => { void (async () => {
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/v1/community/messages/${userId}/clear`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.message || "Unable to clear this chat.");
+          setMessages([]);
+          setError("");
+        } catch (e) { setError((e as Error).message || "Unable to clear this chat."); }
+      })(); } },
+    ]);
+  };
+
+  const presenceLabel = person.isOnline ? "Online now" : person.lastSeenAt ? `Last seen ${new Date(person.lastSeenAt).toLocaleString()}` : "Offline";
+  const messagingBlocked = person.isBlockedByMe || person.hasBlockedMe;
 
   const chooseImage = async () => {
     try {
@@ -231,9 +284,11 @@ export default function MessagesScreen({ route, navigation }: Props) {
           <TouchableOpacity onPress={() => navigation.goBack()}><Text style={s.back}>‹ Back</Text></TouchableOpacity>
           <View style={s.personHeader}>
             <ProfileAvatar uri={personImage} name={name} size={42} />
-            <View><Text style={s.title}>{name}</Text><Text style={s.onlineLabel}>GenZExam learner</Text></View>
+            <View style={s.personCopy}><Text style={s.title}>{name}</Text><Text style={[s.onlineLabel, person.isOnline && s.onlineNow]}>{person.isOnline ? "● " : "○ "}{presenceLabel}</Text></View>
+            <TouchableOpacity onPress={() => setChatMenuOpen(true)} style={s.menuButton} accessibilityRole="button" accessibilityLabel="Chat options"><Text style={s.menuButtonText}>⋮</Text></TouchableOpacity>
           </View>
         </View>
+        {person.hasBlockedMe && !person.isBlockedByMe ? <Text style={s.blockNotice}>This user has blocked you. You cannot send messages.</Text> : person.isBlockedByMe ? <Text style={s.blockNotice}>You blocked this user. Unblock them to send messages.</Text> : null}
         {loading ? <ActivityIndicator color="#6D28D9" style={{ flex: 1 }} /> : (
           <FlatList
             ref={listRef}
@@ -262,14 +317,23 @@ export default function MessagesScreen({ route, navigation }: Props) {
         )}
         {error ? <Text style={s.error}>{error}</Text> : null}
         <View style={s.compose}>
-          <TouchableOpacity onPress={() => { void chooseImage(); }} style={s.attach} accessibilityLabel="Attach image"><Text style={s.attachIcon}>📎</Text></TouchableOpacity>
+          <TouchableOpacity onPress={() => { void chooseImage(); }} disabled={messagingBlocked} style={[s.attach, messagingBlocked && s.disabled]} accessibilityLabel="Attach image"><Text style={s.attachIcon}>📎</Text></TouchableOpacity>
           <View style={s.composerCenter}>
             {pickedImage ? <View style={s.previewWrap}><Image source={{ uri: pickedImage.uri }} style={s.previewImage} /><TouchableOpacity onPress={() => setPickedImage(null)} style={s.removePreview}><Text style={s.removePreviewText}>×</Text></TouchableOpacity></View> : null}
-            <TextInput value={text} onChangeText={setText} placeholder="Type your doubt..." maxLength={2000} style={s.input} />
+            <TextInput value={text} onChangeText={setText} placeholder={messagingBlocked ? "Messaging unavailable" : "Type your doubt..."} editable={!messagingBlocked} maxLength={2000} style={s.input} />
           </View>
-          <TouchableOpacity onPress={() => { void send(); }} disabled={(!text.trim() && !pickedImage) || sending} style={[s.send, ((!text.trim() && !pickedImage) || sending) && s.sendDisabled]} accessibilityLabel="Send message"><Text style={s.sendText}>{sending ? "…" : "➤"}</Text></TouchableOpacity>
+          <TouchableOpacity onPress={() => { void send(); }} disabled={messagingBlocked || (!text.trim() && !pickedImage) || sending} style={[s.send, (messagingBlocked || (!text.trim() && !pickedImage) || sending) && s.sendDisabled]} accessibilityLabel="Send message"><Text style={s.sendText}>{sending ? "…" : "➤"}</Text></TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      <Modal visible={chatMenuOpen} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setChatMenuOpen(false)}>
+        <Pressable style={s.menuBackdrop} onPress={() => setChatMenuOpen(false)}>
+          <View style={s.menuCard}>
+            <TouchableOpacity disabled={updatingBlock || (person.hasBlockedMe && !person.isBlockedByMe)} style={s.menuItem} onPress={() => { setChatMenuOpen(false); toggleBlock(); }}><Text style={[s.menuItemText, s.menuBlockText]}>{person.isBlockedByMe ? "Unblock user" : person.hasBlockedMe ? "This user blocked you" : "Block user"}</Text></TouchableOpacity>
+            <TouchableOpacity style={s.menuItem} onPress={() => { setChatMenuOpen(false); clearChat(); }}><Text style={[s.menuItemText, s.menuClearText]}>Clear chat</Text></TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
 
       <Modal visible={Boolean(editing)} transparent animationType="fade" onRequestClose={() => setEditing(null)}>
         <View style={s.modalBackdrop}>
@@ -302,7 +366,22 @@ const s = StyleSheet.create({
   back: { color: "#6D28D9", fontWeight: "700", marginBottom: 10 },
   title: { fontSize: 18, fontWeight: "800", color: "#20283b" },
   personHeader: { flexDirection: "row", alignItems: "center", gap: 11 },
+  personCopy: { flex: 1, minWidth: 0 },
+  menuButton: { width: 38, height: 38, alignItems: "center", justifyContent: "center", borderRadius: 20, backgroundColor: "#F5F4FA" },
+  menuButtonText: { color: "#4E586C", fontSize: 25, fontWeight: "800", lineHeight: 29, marginTop: -4 },
   onlineLabel: { color: "#8993a5", fontSize: 10, marginTop: 3 },
+  onlineNow: { color: "#278654", fontWeight: "700" },
+  blockButton: { minHeight: 34, paddingHorizontal: 11, justifyContent: "center", borderRadius: 10, borderWidth: 1, borderColor: "#F0DADA", backgroundColor: "#FFF7F7" },
+  blockText: { color: "#B74343", fontSize: 10, fontWeight: "800" },
+  unblockButton: { borderColor: "#DFDCFF", backgroundColor: "#F5F4FF" },
+  unblockText: { color: "#5149DF" },
+  blockNotice: { color: "#8A6724", backgroundColor: "#FFF8E8", textAlign: "center", paddingVertical: 9, paddingHorizontal: 12, fontSize: 11 },
+  menuBackdrop: { flex: 1, alignItems: "flex-end", paddingTop: 94, paddingRight: 16, backgroundColor: "#10132324" },
+  menuCard: { width: 190, padding: 6, borderRadius: 13, backgroundColor: "#FFFFFF", elevation: 12, shadowColor: "#111827", shadowOpacity: 0.18, shadowRadius: 18, shadowOffset: { width: 0, height: 8 } },
+  menuItem: { minHeight: 46, justifyContent: "center", paddingHorizontal: 12, borderRadius: 8 },
+  menuItemText: { color: "#30384B", fontSize: 13, fontWeight: "700" },
+  menuBlockText: { color: "#B74343" },
+  menuClearText: { color: "#B74343" },
   messages: { padding: 14, gap: 9, flexGrow: 1, justifyContent: "flex-end" },
   messageRow: { flexDirection: "row", alignItems: "flex-end", gap: 7 },
   messageRowMine: { justifyContent: "flex-end" },

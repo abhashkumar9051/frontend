@@ -9,6 +9,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import {
   ActivityIndicator,
+  Image,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -41,6 +42,7 @@ type Question = {
   text?: string;
 
   options?: string[];
+  images?: { url: string; alt?: string }[];
 
   optionA?: string;
   optionB?: string;
@@ -52,6 +54,8 @@ type Question = {
   correctOption?: number | string;
 
   explanation?: string;
+  explanationImage?: string;
+  explanationImages?: string[];
 
   marks?: number;
   negativeMarks?: number;
@@ -1026,6 +1030,9 @@ const AnalysisScreen = ({
                 getQuestionStatus(
                   question
                 );
+              const explanationImages = question.explanationImages?.length
+                ? question.explanationImages
+                : question.explanationImage ? [question.explanationImage] : [];
 
 
               return (
@@ -1131,6 +1138,16 @@ const AnalysisScreen = ({
                       question
                     )}
                   </Text>
+
+                  {question.images?.map((image, imageIndex) => (
+                    <Image
+                      key={`${question._id}-question-image-${imageIndex}`}
+                      source={{ uri: image.url }}
+                      accessibilityLabel={image.alt || "Question image"}
+                      style={styles.questionImage}
+                      resizeMode="contain"
+                    />
+                  ))}
 
 
                   {/* ================================= */}
@@ -1358,7 +1375,7 @@ const AnalysisScreen = ({
                   {/* EXPLANATION */}
                   {/* ================================= */}
 
-                  {question.explanation && (
+                  {(question.explanation || explanationImages.length > 0) && (
                     <View
                       style={
                         styles.explanation
@@ -1373,15 +1390,17 @@ const AnalysisScreen = ({
                         Explanation
                       </Text>
 
-                      <Text
-                        style={
-                          styles.explanationText
-                        }
-                      >
-                        {
-                          question.explanation
-                        }
-                      </Text>
+                      {!!question.explanation && <Text style={styles.explanationText}>
+                        {question.explanation}
+                      </Text>}
+
+                      {explanationImages.map((image, imageIndex) => <Image
+                        key={`${question._id}-explanation-image-${imageIndex}`}
+                        source={{ uri: image }}
+                        accessibilityLabel="Explanation image"
+                        style={styles.explanationImage}
+                        resizeMode="contain"
+                      />)}
 
                     </View>
                   )}
@@ -1905,6 +1924,14 @@ const styles =
       color: "#0F172A",
     },
 
+    questionImage: {
+      width: "100%",
+      height: 220,
+      marginTop: 10,
+      borderRadius: 10,
+      backgroundColor: "#FFFFFF",
+    },
+
     /* OPTIONS */
 
     option: {
@@ -2109,6 +2136,14 @@ const styles =
       fontSize: 10,
       lineHeight: 16,
       color: "#475569",
+    },
+
+    explanationImage: {
+      width: "100%",
+      height: 260,
+      marginTop: 10,
+      borderRadius: 9,
+      backgroundColor: "#FFFFFF",
     },
 
     /* BUTTON */

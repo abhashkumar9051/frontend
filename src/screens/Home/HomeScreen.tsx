@@ -35,6 +35,7 @@ import {
 } from "../../services/examService";
 import { API_BASE_URL } from "../../config/api";
 import BottomTabBar from "../../components/BottomTabBar";
+import AppDrawer from "../../components/AppDrawer";
 import { getCachedJson } from "../../services/queryCache";
 
 type Props = NativeStackScreenProps<
@@ -65,6 +66,7 @@ const HomeScreen = ({ navigation }: Props) => {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const [drawerVisible, setDrawerVisible] = useState(false);
   const [searchText, setSearchText] = useState("");
 type DashboardStats = {
   testsTaken: number;
@@ -577,6 +579,8 @@ useEffect(() => {
         barStyle="light-content"
       />
 
+      <AppDrawer visible={drawerVisible} onClose={() => setDrawerVisible(false)} navigation={navigation} />
+
       <ScrollView
         style={styles.mainScrollView}
         showsVerticalScrollIndicator={false}
@@ -603,6 +607,9 @@ useEffect(() => {
 
         <View style={styles.header}>
           <View style={styles.brandRow}>
+            <TouchableOpacity style={styles.menuButton} onPress={() => setDrawerVisible(true)} accessibilityRole="button" accessibilityLabel="Open navigation menu">
+              <View style={styles.menuLines}><View style={styles.menuLine} /><View style={styles.menuLine} /><View style={styles.menuLine} /></View>
+            </TouchableOpacity>
             <Text style={styles.brandIcon}>🎓</Text>
             <View style={styles.brandCopy}>
               <Text style={styles.brandName}>GenZExam</Text>
@@ -1021,6 +1028,30 @@ const styles = StyleSheet.create({
   brandRow: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 9,
+  },
+
+  menuButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.16)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.24)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  menuLines: {
+    width: 19,
+    gap: 4,
+  },
+
+  menuLine: {
+    width: 19,
+    height: 2,
+    borderRadius: 2,
+    backgroundColor: "#FFFFFF",
   },
 
   brandIcon: {

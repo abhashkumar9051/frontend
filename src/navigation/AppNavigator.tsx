@@ -1,6 +1,7 @@
 
 
-import React from "react";
+import React, { useEffect } from "react";
+import { AppState } from "react-native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import HomeScreen from "../screens/Home/HomeScreen";
@@ -22,6 +23,9 @@ import MessagesScreen from "../screens/Community/MessagesScreen";
 import InboxScreen from "../screens/Community/InboxScreen";
 import MyLearningScreen from "../screens/Community/MyLearningScreen";
 import JobsScreen from "../screens/Community/JobsScreen";
+import UsersDirectoryScreen from "../screens/Community/UsersDirectoryScreen";
+import { API_BASE_URL } from "../config/api";
+import { getToken } from "../services/authService";
 export type AppStackParamList = {
   // ==========================================
   // HOME
@@ -32,7 +36,8 @@ export type AppStackParamList = {
 
   Profile: undefined;
   MyLearning: undefined;
-  Jobs: undefined;
+  Jobs: { listingType?: "jobs" | "admit-card" | "result" } | undefined;
+  UsersDirectory: { onlineOnly?: boolean } | undefined;
   Leaderboard: { testId?: string } | undefined;
   Messages: { userId: string; name: string; profileImage?: string };
   Inbox: undefined;
@@ -144,6 +149,36 @@ export type AppStackParamList = {
 const Stack =
   createNativeStackNavigator<AppStackParamList>();
 
+function PresenceHeartbeat() {
+  useEffect(() => {
+    let active = true;
+    const sendPresence = async () => {
+      if (!active || AppState.currentState !== "active") return;
+      const token = await getToken();
+      if (!active || !token) return;
+      try {
+        await fetch(`${API_BASE_URL}/api/v1/community/presence`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } catch {
+        // Presence is best-effort and should not interrupt app navigation.
+      }
+    };
+    void sendPresence();
+    const timer = setInterval(() => { void sendPresence(); }, 60_000);
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") void sendPresence();
+    });
+    return () => {
+      active = false;
+      clearInterval(timer);
+      subscription.remove();
+    };
+  }, []);
+  return null;
+}
+
 type Props = {
   initialRoute?: "Home" | "Profile";
 };
@@ -152,6 +187,8 @@ const AppNavigator = ({
   initialRoute = "Home",
 }: Props) => {
   return (
+    <>
+    <PresenceHeartbeat />
     <Stack.Navigator
       initialRouteName={initialRoute}
       screenOptions={{
@@ -181,6 +218,7 @@ const AppNavigator = ({
       />
       <Stack.Screen name="MyLearning" component={MyLearningScreen} />
       <Stack.Screen name="Jobs" component={JobsScreen} />
+      <Stack.Screen name="UsersDirectory" component={UsersDirectoryScreen} />
       <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
       <Stack.Screen name="Messages" component={MessagesScreen} />
       <Stack.Screen name="Inbox" component={InboxScreen} />
@@ -260,6 +298,7 @@ const AppNavigator = ({
         }
       />
     </Stack.Navigator>
+    </>
   );
 };
 
