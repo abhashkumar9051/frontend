@@ -1,6 +1,5 @@
 import React from "react";
 import {
-  SafeAreaView,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -8,6 +7,7 @@ import {
   StatusBar,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { AppStackParamList } from "../../navigation/AppNavigator";
 
@@ -158,7 +158,7 @@ export default function LegalInfoScreen({ navigation, route }: Props) {
   const page = pageConfig[type] ?? pageConfig.privacy;
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView edges={["left", "right"]} style={styles.safe}>
       <StatusBar barStyle="light-content" />
 
       <View style={styles.header}>

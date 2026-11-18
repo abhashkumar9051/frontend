@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Animated, Dimensions, Linking, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Animated, Dimensions, Linking, Modal, Platform, Pressable, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import type { NavigationProp } from "@react-navigation/native";
 import type { AppStackParamList } from "../navigation/AppNavigator";
 import { API_BASE_URL } from "../config/api";
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
   modalRoot: { flex: 1, flexDirection: "row" },
   backdrop: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(15, 23, 42, 0.48)" },
   drawer: { height: "100%", backgroundColor: "#FFFFFF", elevation: 24, shadowColor: "#111827", shadowOffset: { width: 5, height: 0 }, shadowOpacity: 0.2, shadowRadius: 18 },
-  safeArea: { flex: 1, paddingHorizontal: 17, paddingTop: 5, paddingBottom: 12 },
+  safeArea: { flex: 1, paddingHorizontal: 17, paddingTop: Platform.OS === "android" ? (StatusBar.currentHeight || 24) + 1 : 9, paddingBottom: 12 },
   drawerHeader: { flexDirection: "row", alignItems: "center", paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: "#ECEEF4" },
   brandMark: { width: 42, height: 42, borderRadius: 14, backgroundColor: "#6544E8", alignItems: "center", justifyContent: "center" },
   brandMarkText: { color: "#FFF", fontSize: 23, fontWeight: "900" },

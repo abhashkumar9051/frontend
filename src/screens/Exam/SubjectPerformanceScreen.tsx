@@ -7,13 +7,13 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import {
   ActivityIndicator,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
@@ -782,7 +782,7 @@ const SubjectPerformanceScreen = ({
 
     return (
 
-      <SafeAreaView
+      <SafeAreaView edges={["left", "right"]}
         style={
           styles.center
         }
@@ -819,7 +819,7 @@ const SubjectPerformanceScreen = ({
 
     return (
 
-      <SafeAreaView
+      <SafeAreaView edges={["left", "right"]}
         style={
           styles.center
         }
@@ -885,7 +885,7 @@ const SubjectPerformanceScreen = ({
 
   return (
 
-    <SafeAreaView
+    <SafeAreaView edges={["left", "right"]}
       style={
         styles.safe
       }

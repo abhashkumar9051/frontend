@@ -3,13 +3,13 @@ import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import RazorpayCheckout from "react-native-razorpay";
 
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -290,7 +290,7 @@ const TestInstructionsScreen = ({
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.center}>
+      <SafeAreaView edges={["left", "right"]} style={styles.center}>
         <ActivityIndicator
           size="large"
           color="#6D28D9"
@@ -309,7 +309,7 @@ const TestInstructionsScreen = ({
 
   if (error || !test) {
     return (
-      <SafeAreaView style={styles.center}>
+      <SafeAreaView edges={["left", "right"]} style={styles.center}>
         <Text style={styles.errorIcon}>
           ⚠️
         </Text>
@@ -388,7 +388,7 @@ const TestInstructionsScreen = ({
       : 0;
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView edges={["left", "right"]} style={styles.safe}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={

@@ -6,7 +6,6 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { AppStackParamList } from "../../navigation/AppNavigator";
 import { API_BASE_URL } from "../../config/api";
 import BottomTabBar from "../../components/BottomTabBar";
-import AppDrawer from "../../components/AppDrawer";
 
 type Props = NativeStackScreenProps<AppStackParamList, "Jobs">;
 type Job = { _id: string; listingType?: "jobs" | "admit-card" | "result"; title: string; organization: string; description?: string; jobType: "government" | "private"; category: string; location: string; education: string; vacancies: number; lastDate?: string | null; notificationUrl?: string; applyUrl?: string; syllabusUrl?: string; logoUrl?: string };
@@ -17,7 +16,6 @@ export default function JobsScreen({ navigation, route }: Props) {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [category, setCategory] = useState("All Jobs");
   const [listingType, setListingType] = useState<"jobs" | "admit-card" | "result">(route.params?.listingType || "jobs");
-  const [drawerVisible, setDrawerVisible] = useState(false);
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState("");
   const [loading, setLoading] = useState(true);
@@ -40,14 +38,7 @@ export default function JobsScreen({ navigation, route }: Props) {
     return categoryMatch && (!query.trim() || `${job.title} ${job.organization} ${job.category} ${job.location}`.toLowerCase().includes(query.trim().toLowerCase()));
   });
   const openUrl = async (url?: string) => { if (url) { try { await Linking.openURL(url); } catch { setError("Unable to open this link."); } } };
-  return <SafeAreaView edges={["top", "left", "right"]} style={s.screen}>
-    <View style={s.topBar}>
-      <TouchableOpacity style={s.menuButton} onPress={() => setDrawerVisible(true)} accessibilityRole="button" accessibilityLabel="Open navigation menu">
-        <View style={s.menuLines}><View style={s.menuLine} /><View style={s.menuLine} /><View style={s.menuLine} /></View>
-      </TouchableOpacity>
-      <Text style={s.brand}>GenZ<Text style={s.brandAccent}>Exam</Text></Text>
-      <View style={{ flex: 1 }} />
-    </View>
+  return <SafeAreaView edges={["left", "right"]} style={s.screen}>
     <ScrollView ref={listRef} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor="#6D28D9" />}>
       <View style={[s.hero, listingType !== "jobs" && s.blueHero]}><View style={s.heroCopy}><Text style={[s.kicker, listingType !== "jobs" && s.blueHeroText]}>{listingType === "jobs" ? "GOVT. & PRIVATE UPDATES" : listingType === "admit-card" ? "EXAM HALL TICKET UPDATES" : "EXAM RESULT UPDATES"}</Text><Text style={[s.heroTitle, listingType !== "jobs" && s.blueHeroText]}>{listingType === "jobs" ? <>Latest <Text style={s.heroAccent}>Job</Text> Notifications</> : listingType === "admit-card" ? <>Admit Card</> : <>Exam Results</>}</Text><Text style={[s.heroSubtitle, listingType !== "jobs" && s.blueHeroSubtitle]}>{listingType === "jobs" ? "Get upcoming & ongoing job updates, eligibility, syllabus, and apply links in one place." : listingType === "admit-card" ? "Download your exam admit card from here" : "Check your exam results and official result links"}</Text><View style={s.heroActions}><TouchableOpacity style={[s.exploreButton, listingType !== "jobs" && s.secondaryHeroButton]} onPress={() => { setListingType("jobs"); setCategory("All Jobs"); listRef.current?.scrollTo({ y: listY.current, animated: true }); }}><Text style={[s.exploreIcon, listingType !== "jobs" && s.secondaryHeroText]}>♧</Text><Text style={[s.exploreText, listingType !== "jobs" && s.secondaryHeroText]}>Explore Jobs</Text></TouchableOpacity><TouchableOpacity style={[s.heroTab, listingType === "admit-card" && s.heroTabActive]} onPress={() => setListingType("admit-card")}><Text style={[s.heroTabText, listingType === "admit-card" && s.heroTabTextActive]}>Admit Card</Text></TouchableOpacity><TouchableOpacity style={[s.heroTab, listingType === "result" && s.heroTabActive]} onPress={() => setListingType("result")}><Text style={[s.heroTabText, listingType === "result" && s.heroTabTextActive]}>Result</Text></TouchableOpacity></View></View><View style={s.artwork} pointerEvents="none"><View style={s.artOrbit} /><View style={s.clipboard}><View style={s.clipTop} /><Text style={s.clipTitle}>{listingType === "result" ? "RESULT" : listingType === "admit-card" ? "ADMIT" : "JOB"}</Text><View style={s.clipRule} /><Text style={s.clipLine}>✓ ━━━━━</Text><Text style={s.clipLine}>✓ ━━━━━</Text><Text style={s.clipLine}>✓ ━━━━━</Text></View><View style={s.briefcase}><Text style={s.briefcaseText}>▰</Text></View><View style={s.magnifier}><Text style={s.magnifierText}>⌕</Text></View></View></View>
       <TextInput value={query} onChangeText={setQuery} placeholder={listingType === "jobs" ? "Search jobs, departments..." : listingType === "admit-card" ? "Search exam (e.g. BPSC TRE, STET)..." : "Search exam results..."} placeholderTextColor="#9299AA" style={s.search} />
@@ -57,7 +48,7 @@ export default function JobsScreen({ navigation, route }: Props) {
         <TouchableOpacity activeOpacity={0.8} style={s.cardTop} onPress={() => setExpanded(expanded === job._id ? "" : job._id)}><View style={s.logo}>{job.logoUrl ? <Image source={{ uri: job.logoUrl }} style={s.logoImage} resizeMode="contain" /> : <Text style={s.logoFallback}>{job.organization.slice(0, 2).toUpperCase()}</Text>}</View><View style={s.jobCopy}><View style={s.titleRow}><Text style={s.jobTitle} numberOfLines={2}>{job.title}</Text><Text style={s.chevron}>{expanded === job._id ? "⌃" : "›"}</Text></View><Text style={s.organization} numberOfLines={1}>{job.organization}</Text><View style={s.meta}>{listingType === "jobs" && <><Text style={s.metaText}>Vacancy: {job.vacancies || "—"}</Text><Text style={s.metaDivider}>·</Text></>}<Text style={s.metaText}>{listingType === "jobs" ? "Last date" : listingType === "admit-card" ? "Release date" : "Result date"}: {dateText(job.lastDate)}</Text></View><View style={s.tags}><Text style={s.tag}>{listingType === "jobs" ? job.category : listingType === "admit-card" ? "Admit Card" : "Result"}</Text><Text style={[s.tag, s.tagBlue]}>{job.location}</Text>{job.education ? <Text style={[s.tag, s.tagGreen]}>{job.education}</Text> : null}</View></View></TouchableOpacity>
         {expanded === job._id && <View style={s.details}><Text style={s.detailText}>{job.description || "Check the official notification for full eligibility and selection details."}</Text><Text style={s.eligibility}>Eligibility: {job.education || "See official notification"}</Text><View style={s.actions}>{job.notificationUrl ? <TouchableOpacity style={s.secondaryButton} onPress={() => openUrl(job.notificationUrl)}><Text style={s.secondaryText}>Notification ↗</Text></TouchableOpacity> : null}{job.syllabusUrl ? <TouchableOpacity style={s.secondaryButton} onPress={() => openUrl(job.syllabusUrl)}><Text style={s.secondaryText}>Syllabus ↗</Text></TouchableOpacity> : null}{job.applyUrl ? <TouchableOpacity style={s.applyButton} onPress={() => openUrl(job.applyUrl)}><Text style={s.applyText}>Apply now ↗</Text></TouchableOpacity> : null}</View></View>}
       </View>) : <View style={s.emptyCard}><Text style={s.emptyIcon}>⌕</Text><Text style={s.emptyTitle}>{listingType === "jobs" ? "No jobs found" : listingType === "admit-card" ? "No admit cards found" : "No results found"}</Text><Text style={s.empty}>Try another search. New updates will show here when published.</Text></View>}
-    </ScrollView><BottomTabBar navigation={navigation} active="Jobs" /><AppDrawer visible={drawerVisible} onClose={() => setDrawerVisible(false)} navigation={navigation} />
+    </ScrollView><BottomTabBar navigation={navigation} active="Jobs" />
   </SafeAreaView>;
 }
 

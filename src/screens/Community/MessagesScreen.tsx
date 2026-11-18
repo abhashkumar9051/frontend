@@ -273,7 +273,7 @@ export default function MessagesScreen({ route, navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={s.container}>
+    <SafeAreaView edges={["left", "right"]} style={s.container}>
       <KeyboardAvoidingView
         style={s.flex}
         // Android needs the same keyboard inset handling as iOS. Without it,

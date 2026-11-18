@@ -87,7 +87,7 @@ export default function UsersDirectoryScreen({ navigation, route }: Props) {
     <View style={styles.messageButton}><Text style={styles.messageButtonText}>Message</Text></View>
   </TouchableOpacity>;
 
-  return <SafeAreaView edges={["top", "left", "right"]} style={styles.screen}>
+  return <SafeAreaView edges={["left", "right"]} style={styles.screen}>
     <View style={styles.header}>
       <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Go back"><Text style={styles.backIcon}>‹</Text></TouchableOpacity>
       <View style={styles.headerCopy}><Text style={styles.title}>{onlineOnly ? "Active users" : "All users"}</Text><Text style={styles.subtitle}>{onlineOnly ? "Students active in the last 2 minutes." : "Find a student and start a conversation."}</Text></View>

@@ -10,7 +10,6 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -18,6 +17,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import RazorpayCheckout from "react-native-razorpay";
 
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -107,6 +107,7 @@ const ExamDetailsScreen = ({
     useState("");
 
   const [tab, setTab] = useState("overview");
+  const [isFavorite, setIsFavorite] = useState(false);
   const [premiumUnlocked, setPremiumUnlocked] = useState(false);
   const [buyingPremium, setBuyingPremium] = useState(false);
 
@@ -579,10 +580,9 @@ const ExamDetailsScreen = ({
   return (
     <SafeAreaView
       style={styles.safe}
+      edges={["left", "right"]}
     >
-      <StatusBar
-        barStyle="light-content"
-      />
+      <StatusBar barStyle="dark-content" />
 
       <ScrollView
         showsVerticalScrollIndicator={
@@ -618,6 +618,8 @@ const ExamDetailsScreen = ({
               onPress={() =>
                 navigation.goBack()
               }
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
             >
               <Text
                 style={styles.back}
@@ -630,6 +632,8 @@ const ExamDetailsScreen = ({
               style={
                 styles.topTitle
               }
+              numberOfLines={1}
+              ellipsizeMode="tail"
             >
               {examShortName}
             </Text>
@@ -638,41 +642,31 @@ const ExamDetailsScreen = ({
               style={
                 styles.roundBtn
               }
+              onPress={() => setIsFavorite((current) => !current)}
+              accessibilityRole="button"
+              accessibilityLabel={isFavorite ? "Remove from favorites" : "Add to favorites"}
             >
               <Text
-                style={styles.star}
+                style={[styles.star, isFavorite && styles.starActive]}
               >
-                ♡
+                {isFavorite ? "♥" : "♡"}
               </Text>
             </TouchableOpacity>
 
           </View>
 
-          {/* LOGO */}
-
-          <View
-            style={styles.logo}
-          >
-            {renderExamLogo()}
+          <View style={styles.heroBody}>
+            <View style={styles.logo}>{renderExamLogo()}</View>
+            <View style={styles.heroCopy}>
+              <Text style={styles.title} numberOfLines={3}>{examTitle}</Text>
+              <Text style={styles.subTitle} numberOfLines={2}>{examDescription}</Text>
+            </View>
+            <View style={styles.heroArtwork} accessibilityElementsHidden>
+              <Text style={styles.artworkPlant}>🌿</Text>
+              <Text style={styles.artworkLaptop}>💻</Text>
+              <Text style={styles.artworkBooks}>📚</Text>
+            </View>
           </View>
-
-          {/* TITLE */}
-
-          <Text
-            style={styles.title}
-          >
-            {examTitle}
-          </Text>
-
-          {/* DESCRIPTION */}
-
-          <Text
-            style={
-              styles.subTitle
-            }
-          >
-            {examDescription}
-          </Text>
 
           {/* BADGES */}
 
@@ -687,7 +681,7 @@ const ExamDetailsScreen = ({
                   styles.badgeText
                 }
               >
-                Competitive Exam
+                🎯  Competitive Exam
               </Text>
             </View>
 
@@ -701,7 +695,7 @@ const ExamDetailsScreen = ({
                   styles.greenBadgeText
                 }
               >
-                ACTIVE
+                ✓  ACTIVE
               </Text>
             </View>
           </View>
@@ -1220,27 +1214,14 @@ const Stat = ({
   value: string;
   label: string;
 }) => (
-  <View
-    style={{
-      flex: 1,
-      alignItems: "center",
-    }}
-  >
-    <Text
-      style={
-        styles.statValue
-      }
-    >
-      {value}
-    </Text>
-
-    <Text
-      style={
-        styles.statLabel
-      }
-    >
-      {label}
-    </Text>
+  <View style={styles.statItem}>
+    <View style={[styles.statIcon, label === "Tests" && styles.testStatIcon, label === "Questions" && styles.questionStatIcon]}>
+      <Text style={styles.statIconText}>{label === "Subjects" ? "▱" : label === "Tests" ? "☷" : "?"}</Text>
+    </View>
+    <View style={styles.statCopy}>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
   </View>
 );
 
@@ -1393,6 +1374,18 @@ const styles =
         "#F8FAFC",
     },
 
+    appHeader: { minHeight: 64, paddingHorizontal: 19, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 9, backgroundColor: "#FFFFFF", borderBottomWidth: 1, borderBottomColor: "#EEF0F5", zIndex: 5, elevation: 3 },
+    appMenuButton: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: "#F4F1FF", borderWidth: 1, borderColor: "#E9E4FF" },
+    appMenuLines: { width: 19, gap: 4 },
+    appMenuLine: { width: 19, height: 2, borderRadius: 2, backgroundColor: "#5141C9" },
+    appBrandMark: { width: 38, height: 38, borderRadius: 12, overflow: "hidden", backgroundColor: "#554CE5", color: "#FFFFFF", textAlign: "center", textAlignVertical: "center", fontSize: 23, fontWeight: "900" },
+    appBrandCopy: { flex: 1, minWidth: 0 },
+    appBrandName: { color: "#20283B", fontSize: 20, fontWeight: "900", letterSpacing: -0.5 },
+    appBrandTagline: { color: "#8790A3", fontSize: 9, marginTop: 1 },
+    appProfileButton: { width: 42, height: 42, borderRadius: 21, overflow: "hidden", alignItems: "center", justifyContent: "center", backgroundColor: "#EDEAFF", borderWidth: 2, borderColor: "#FFFFFF" },
+    appProfileImage: { width: "100%", height: "100%", borderRadius: 21 },
+    appProfileInitial: { color: "#6D28D9", fontSize: 18, fontWeight: "800" },
+
     center: {
       flex: 1,
       alignItems:
@@ -1431,18 +1424,24 @@ const styles =
     // ======================================
 
     hero: {
-      backgroundColor:
-        "#5B21B6",
-      padding: 18,
-      paddingBottom: 24,
-      borderBottomLeftRadius:
-        28,
-      borderBottomRightRadius:
-        28,
+      marginHorizontal: 15,
+      marginTop: 13,
+      padding: 15,
+      paddingBottom: 12,
+      borderRadius: 24,
+      overflow: "hidden",
+      backgroundColor: "#4C1D95",
+      borderWidth: 1,
+      borderColor: "#7C3AED",
+      shadowColor: "#4C1D95",
+      shadowOpacity: 0.22,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 7,
     },
 
     top: {
-      height: 52,
+      height: 36,
       flexDirection:
         "row",
       justifyContent:
@@ -1465,7 +1464,8 @@ const styles =
 
     back: {
       color: "#fff",
-      fontSize: 30,
+      fontSize: 31,
+      lineHeight: 34,
     },
 
     star: {
@@ -1474,67 +1474,66 @@ const styles =
     },
 
     topTitle: {
+      flex: 1,
+      marginHorizontal: 8,
       color: "#fff",
-      fontSize: 16,
+      fontSize: 14,
       fontWeight: "800",
+      textAlign: "center",
     },
 
-    logo: {
-      width: 74,
-      height: 74,
-      borderRadius: 20,
-      backgroundColor:
-        "#fff",
-      alignSelf: "center",
-      justifyContent:
-        "center",
-      alignItems:
-        "center",
-      marginTop: 8,
-    },
+    starActive: { color: "#FDE68A" },
+
+    heroBody: { minHeight: 132, marginTop: 13, flexDirection: "row", alignItems: "center", gap: 10 },
+    logo: { width: 60, height: 60, flexShrink: 0, borderRadius: 18, backgroundColor: "#FFFFFF", justifyContent: "center", alignItems: "center" },
+    heroCopy: { flex: 1, minWidth: 0, zIndex: 1 },
+    heroArtwork: { width: 78, height: 112, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+    artworkPlant: { position: "absolute", top: 1, left: 4, fontSize: 23 },
+    artworkLaptop: { fontSize: 50, marginTop: 13 },
+    artworkBooks: { position: "absolute", bottom: 0, right: -1, fontSize: 34 },
 
     logoText: {
-      fontSize: 32,
+      fontSize: 26,
       fontWeight: "900",
       color: "#6D28D9",
     },
 
     title: {
       color: "#fff",
-      fontSize: 25,
+      fontSize: 17,
       fontWeight: "900",
-      textAlign: "center",
-      marginTop: 13,
+      textAlign: "left",
+      lineHeight: 21,
+      marginTop: 0,
     },
 
     subTitle: {
       color: "#C7D2FE",
-      textAlign: "center",
+      textAlign: "left",
+      fontSize: 9,
+      lineHeight: 13,
       marginTop: 5,
-      fontSize: 12,
-      lineHeight: 18,
     },
 
     badges: {
       flexDirection:
         "row",
-      justifyContent:
-        "center",
+      justifyContent: "flex-start",
       gap: 7,
-      marginTop: 10,
+      marginTop: 9,
+      flexWrap: "wrap",
     },
 
     badge: {
-      backgroundColor:
-        "rgba(255,255,255,.12)",
+      backgroundColor: "rgba(255,255,255,.16)",
       paddingHorizontal: 10,
-      paddingVertical: 5,
-      borderRadius: 8,
+      paddingVertical: 7,
+      borderRadius: 18,
     },
 
     badgeText: {
       color: "#fff",
-      fontSize: 9,
+      fontSize: 10,
       fontWeight: "700",
     },
 
@@ -1542,22 +1541,22 @@ const styles =
       backgroundColor:
         "#DCFCE7",
       paddingHorizontal: 9,
-      paddingVertical: 5,
-      borderRadius: 8,
+      paddingVertical: 7,
+      borderRadius: 18,
     },
 
     greenBadgeText: {
       color: "#15803D",
-      fontSize: 9,
+      fontSize: 10,
       fontWeight: "900",
     },
 
     stats: {
-      marginTop: 20,
-      backgroundColor:
-        "rgba(255,255,255,.10)",
-      borderRadius: 15,
-      paddingVertical: 14,
+      marginTop: 13,
+      backgroundColor: "#FFFFFF",
+      borderRadius: 20,
+      paddingVertical: 13,
+      paddingHorizontal: 10,
       flexDirection:
         "row",
       alignItems:
@@ -1565,22 +1564,28 @@ const styles =
     },
 
     statValue: {
-      color: "#fff",
+      color: "#18133B",
       fontWeight: "900",
       fontSize: 15,
     },
 
     statLabel: {
-      color: "#C7D2FE",
-      fontSize: 9,
+      color: "#5B5875",
+      fontSize: 10,
       marginTop: 3,
     },
+
+    statItem: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
+    statIcon: { width: 31, height: 31, borderRadius: 12, backgroundColor: "#EEE7FF", alignItems: "center", justifyContent: "center" },
+    testStatIcon: { backgroundColor: "#E0F2FE" },
+    questionStatIcon: { backgroundColor: "#FFEDD5" },
+    statIconText: { color: "#6D28D9", fontSize: 19, fontWeight: "900" },
+    statCopy: { minWidth: 0 },
 
     divider: {
       width: 1,
       height: 28,
-      backgroundColor:
-        "rgba(255,255,255,.18)",
+      backgroundColor: "#DDD6FE",
     },
 
     // ======================================

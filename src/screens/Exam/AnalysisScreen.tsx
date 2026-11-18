@@ -10,13 +10,13 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   ActivityIndicator,
   Image,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
@@ -601,7 +601,7 @@ const AnalysisScreen = ({
 
   if (loading) {
     return (
-      <SafeAreaView
+      <SafeAreaView edges={["left", "right"]}
         style={styles.center}
       >
         <ActivityIndicator
@@ -627,7 +627,7 @@ const AnalysisScreen = ({
 
   if (error) {
     return (
-      <SafeAreaView
+      <SafeAreaView edges={["left", "right"]}
         style={styles.center}
       >
         <Text
@@ -681,7 +681,7 @@ const AnalysisScreen = ({
 
   if (!questions.length) {
     return (
-      <SafeAreaView
+      <SafeAreaView edges={["left", "right"]}
         style={styles.center}
       >
         <Text
@@ -770,7 +770,7 @@ const AnalysisScreen = ({
   /* ================================================= */
 
   return (
-    <SafeAreaView
+    <SafeAreaView edges={["left", "right"]}
       style={styles.safe}
     >
       <ScrollView

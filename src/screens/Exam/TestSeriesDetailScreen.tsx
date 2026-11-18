@@ -8,13 +8,13 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import RazorpayCheckout from "react-native-razorpay";
 
 import type {
@@ -434,7 +434,7 @@ const TestSeriesDetailScreen = ({
 
   if (loading) {
     return (
-      <SafeAreaView
+      <SafeAreaView edges={["left", "right"]}
         style={styles.center}
       >
         <ActivityIndicator
@@ -485,7 +485,7 @@ const TestSeriesDetailScreen = ({
   // ========================================
 
   return (
-    <SafeAreaView
+    <SafeAreaView edges={["left", "right"]}
       style={styles.safe}
     >
       <ScrollView

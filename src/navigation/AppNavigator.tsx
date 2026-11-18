@@ -26,6 +26,7 @@ import JobsScreen from "../screens/Community/JobsScreen";
 import UsersDirectoryScreen from "../screens/Community/UsersDirectoryScreen";
 import { API_BASE_URL } from "../config/api";
 import { getToken } from "../services/authService";
+import AppHeader from "../components/AppHeader";
 export type AppStackParamList = {
   // ==========================================
   // HOME
@@ -192,7 +193,8 @@ const AppNavigator = ({
     <Stack.Navigator
       initialRouteName={initialRoute}
       screenOptions={{
-        headerShown: false,
+        headerShown: true,
+        header: ({ navigation: headerNavigation }) => React.createElement(AppHeader, { navigation: headerNavigation }),
       }}
     >
       {/* ======================================
@@ -222,7 +224,7 @@ const AppNavigator = ({
       <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
       <Stack.Screen name="Messages" component={MessagesScreen} />
       <Stack.Screen name="Inbox" component={InboxScreen} />
-      <Stack.Screen name="LegalInfo" component={LegalInfoScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="LegalInfo" component={LegalInfoScreen} />
 
       {/* ======================================
           EXAM

@@ -4,13 +4,13 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
@@ -311,7 +311,7 @@ const SubjectDetailScreen = ({
 
   if (loading) {
     return (
-      <SafeAreaView
+      <SafeAreaView edges={["left", "right"]}
         style={styles.center}
       >
         <ActivityIndicator
@@ -332,7 +332,7 @@ const SubjectDetailScreen = ({
 
   if (!subject) {
     return (
-      <SafeAreaView
+      <SafeAreaView edges={["left", "right"]}
         style={styles.center}
       >
         <Text style={styles.error}>
@@ -410,7 +410,7 @@ const SubjectDetailScreen = ({
   // ==========================================
 
   return (
-    <SafeAreaView
+    <SafeAreaView edges={["left", "right"]}
       style={styles.safe}
     >
       <ScrollView

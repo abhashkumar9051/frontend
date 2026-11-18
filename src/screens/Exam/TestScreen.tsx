@@ -2695,7 +2695,7 @@ submitTestRef.current = submitTest;
   return (
     <SafeAreaView
       style={styles.safe}
-      edges={["top", "left", "right"]}
+      edges={["left", "right"]}
     >
       <StatusBar
         barStyle="dark-content"
