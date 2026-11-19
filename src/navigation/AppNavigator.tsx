@@ -3,6 +3,7 @@
 import React, { useEffect } from "react";
 import { AppState } from "react-native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import HomeScreen from "../screens/Home/HomeScreen";
 import ProfileScreen from "../screens/Profile/ProfileScreen";
@@ -187,6 +188,7 @@ type Props = {
 const AppNavigator = ({
   initialRoute = "Home",
 }: Props) => {
+  const insets = useSafeAreaInsets();
   return (
     <>
     <PresenceHeartbeat />
@@ -194,6 +196,7 @@ const AppNavigator = ({
       initialRouteName={initialRoute}
       screenOptions={{
         headerShown: false,
+        contentStyle: { paddingTop: insets.top },
       }}
     >
       {/* ======================================
