@@ -1,7 +1,7 @@
 
 
 import React, { useEffect } from "react";
-import { AppState } from "react-native";
+import { AppState, Platform, StatusBar } from "react-native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import HomeScreen from "../screens/Home/HomeScreen";
@@ -193,8 +193,8 @@ const AppNavigator = ({
     <Stack.Navigator
       initialRouteName={initialRoute}
       screenOptions={{
-        headerShown: true,
-        header: ({ navigation: headerNavigation }) => React.createElement(AppHeader, { navigation: headerNavigation }),
+        headerShown: false,
+        contentStyle: { paddingTop: Platform.OS === "android" ? StatusBar.currentHeight || 0 : 0 },
       }}
     >
       {/* ======================================
@@ -204,6 +204,11 @@ const AppNavigator = ({
       <Stack.Screen
         name="Home"
         component={HomeScreen}
+        options={{
+          headerShown: true,
+          contentStyle: { paddingTop: 0 },
+          header: ({ navigation: headerNavigation }) => React.createElement(AppHeader, { navigation: headerNavigation }),
+        }}
       />
       
       <Stack.Screen

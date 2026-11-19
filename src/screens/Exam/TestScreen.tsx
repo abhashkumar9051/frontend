@@ -1815,6 +1815,8 @@ type TestData = {
 
   duration?: number;
   durationMinutes?: number;
+  startAt?: string | null;
+  endAt?: string | null;
 
   questions?: number;
   totalQuestions?: number;
@@ -1958,9 +1960,10 @@ const TestScreen = ({
               180
           );
 
-        setSecondsLeft(
-          durationMinutes * 60
-        );
+        const scheduledSeconds = data?.test?.endAt
+          ? Math.max(0, Math.floor((new Date(data.test.endAt).getTime() - Date.now()) / 1000))
+          : Number.POSITIVE_INFINITY;
+        setSecondsLeft(Math.min(durationMinutes * 60, scheduledSeconds));
 
         console.log(
           "TOTAL QUESTIONS:",
@@ -2035,6 +2038,24 @@ const TestScreen = ({
     answers,
   ]);
 
+  useEffect(() => {
+    if (!test?.endAt || !questions.length) return;
+    const remainingMs = new Date(test.endAt).getTime() - Date.now();
+    const closeTest = () => {
+      if (submittedRef.current) return;
+      submittedRef.current = true;
+      Alert.alert("Test window ended", "The scheduled time for this test has ended.", [
+        { text: "OK", onPress: () => navigation.goBack() },
+      ], { cancelable: false });
+    };
+    if (remainingMs <= 0) {
+      closeTest();
+      return;
+    }
+    const timeout = setTimeout(closeTest, remainingMs);
+    return () => clearTimeout(timeout);
+  }, [test?.endAt, questions.length, navigation]);
+
   /* ================================================= */
   /* FORMAT TIME */
   /* ================================================= */
@@ -2096,6 +2117,14 @@ const TestScreen = ({
             if (previous <= 1) {
               clearInterval(timer);
 
+              if (test?.endAt && Date.now() >= new Date(test.endAt).getTime()) {
+                submittedRef.current = true;
+                Alert.alert("Test window ended", "The scheduled time for this test has ended.", [
+                  { text: "OK", onPress: () => navigation.goBack() },
+                ], { cancelable: false });
+                return 0;
+              }
+
               if (
                 !submittedRef.current
               ) {
@@ -2122,6 +2151,8 @@ const TestScreen = ({
     loading,
     questions.length,
     secondsLeft,
+    test?.endAt,
+    navigation,
   ]);
 
   /* ================================================= */

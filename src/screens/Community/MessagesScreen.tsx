@@ -4,6 +4,7 @@ import {
   Alert,
   FlatList,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   PermissionsAndroid,
@@ -21,6 +22,7 @@ import type { AppStackParamList } from "../../navigation/AppNavigator";
 import { API_BASE_URL } from "../../config/api";
 import { getToken } from "../../services/authService";
 import ProfileAvatar from "../../components/ProfileAvatar";
+import BottomTabBar from "../../components/BottomTabBar";
 import { launchImageLibrary, type Asset } from "react-native-image-picker";
 import { CameraRoll } from "@react-native-camera-roll/camera-roll";
 import RNFS from "react-native-fs";
@@ -50,6 +52,15 @@ export default function MessagesScreen({ route, navigation }: Props) {
   const [sending, setSending] = useState(false);
   const [selectedImage, setSelectedImage] = useState<Message | null>(null);
   const [savingImage, setSavingImage] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const show = Keyboard.addListener(showEvent, (event) => setKeyboardHeight(event.endCoordinates.height));
+    const hide = Keyboard.addListener(hideEvent, () => setKeyboardHeight(0));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
 
   const refresh = useCallback(async (authToken: string, mounted = true) => {
     const response = await fetch(`${API_BASE_URL}/api/v1/community/messages/${userId}`, {
@@ -274,12 +285,7 @@ export default function MessagesScreen({ route, navigation }: Props) {
 
   return (
     <SafeAreaView edges={["left", "right"]} style={s.container}>
-      <KeyboardAvoidingView
-        style={s.flex}
-        // Android needs the same keyboard inset handling as iOS. Without it,
-        // the composer can remain underneath the soft keyboard on some devices.
-        behavior="padding"
-      >
+      <View style={s.flex}>
         <View style={s.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}><Text style={s.back}>‹ Back</Text></TouchableOpacity>
           <View style={s.personHeader}>
@@ -316,15 +322,25 @@ export default function MessagesScreen({ route, navigation }: Props) {
           />
         )}
         {error ? <Text style={s.error}>{error}</Text> : null}
-        <View style={s.compose}>
-          <TouchableOpacity onPress={() => { void chooseImage(); }} disabled={messagingBlocked} style={[s.attach, messagingBlocked && s.disabled]} accessibilityLabel="Attach image"><Text style={s.attachIcon}>📎</Text></TouchableOpacity>
-          <View style={s.composerCenter}>
-            {pickedImage ? <View style={s.previewWrap}><Image source={{ uri: pickedImage.uri }} style={s.previewImage} /><TouchableOpacity onPress={() => setPickedImage(null)} style={s.removePreview}><Text style={s.removePreviewText}>×</Text></TouchableOpacity></View> : null}
-            <TextInput value={text} onChangeText={setText} placeholder={messagingBlocked ? "Messaging unavailable" : "Type your doubt..."} editable={!messagingBlocked} maxLength={2000} style={s.input} />
+        <KeyboardAvoidingView
+          // iOS handles the inset here. Android positions only the composer
+          // from the keyboard height because the window uses adjustNothing.
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={0}
+          pointerEvents="box-none"
+          style={Platform.OS === "android" ? StyleSheet.absoluteFillObject : s.composerAvoiding}
+        >
+          <View style={[s.compose, Platform.OS === "android" && { position: "absolute", left: 0, right: 0, bottom: keyboardHeight + 16, zIndex: 10 }]}>
+            <TouchableOpacity onPress={() => { void chooseImage(); }} disabled={messagingBlocked} style={[s.attach, messagingBlocked && s.disabled]} accessibilityLabel="Attach image"><Text style={s.attachIcon}>📎</Text></TouchableOpacity>
+            <View style={s.composerCenter}>
+              {pickedImage ? <View style={s.previewWrap}><Image source={{ uri: pickedImage.uri }} style={s.previewImage} /><TouchableOpacity onPress={() => setPickedImage(null)} style={s.removePreview}><Text style={s.removePreviewText}>×</Text></TouchableOpacity></View> : null}
+              <TextInput value={text} onChangeText={setText} placeholder={messagingBlocked ? "Messaging unavailable" : "Type your doubt..."} editable={!messagingBlocked} maxLength={2000} style={s.input} />
+            </View>
+            <TouchableOpacity onPress={() => { void send(); }} disabled={messagingBlocked || (!text.trim() && !pickedImage) || sending} style={[s.send, (messagingBlocked || (!text.trim() && !pickedImage) || sending) && s.sendDisabled]} accessibilityLabel="Send message"><Text style={s.sendText}>{sending ? "…" : "➤"}</Text></TouchableOpacity>
           </View>
-          <TouchableOpacity onPress={() => { void send(); }} disabled={messagingBlocked || (!text.trim() && !pickedImage) || sending} style={[s.send, (messagingBlocked || (!text.trim() && !pickedImage) || sending) && s.sendDisabled]} accessibilityLabel="Send message"><Text style={s.sendText}>{sending ? "…" : "➤"}</Text></TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </View>
+      {keyboardHeight === 0 && <BottomTabBar navigation={navigation} active="Inbox" />}
 
       <Modal visible={chatMenuOpen} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setChatMenuOpen(false)}>
         <Pressable style={s.menuBackdrop} onPress={() => setChatMenuOpen(false)}>
@@ -361,6 +377,7 @@ export default function MessagesScreen({ route, navigation }: Props) {
 
 const s = StyleSheet.create({
   flex: { flex: 1 },
+  composerAvoiding: { width: "100%" },
   container: { flex: 1, backgroundColor: "#F7F8FC" },
   header: { backgroundColor: "white", padding: 17, borderBottomWidth: 1, borderBottomColor: "#eaecf2" },
   back: { color: "#6D28D9", fontWeight: "700", marginBottom: 10 },
